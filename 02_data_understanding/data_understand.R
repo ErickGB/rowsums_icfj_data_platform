@@ -95,7 +95,7 @@ write.csv(train_raw, paste0(PATH_OUT, "out_centralgov_salaries.csv"), row.names 
 # 				1.1 Correlation
 
 # By feature
-#   >> Missing value analysis
+#   >> Missing value analysis: 
 #   >> Data gap analysis for each attribute
 #   >> Logical attribute check
 #   >> Business data check
