@@ -35,12 +35,14 @@ planitlla_20190406 <- planitlla_20190406 %>%
 		 estado = gsub(" ", "", estado), 
 		 fecha_inicio = gsub("\r\n", "", fecha_inicio), 
 		 fecha_inicio = gsub(" ", "", fecha_inicio), 
+		 fecha_inicio = substr(fecha_inicio, 1, 10),
 				
 		 salario = as.numeric(salario),
 		 gasto = as.numeric(gasto),
 		 total = salario + gasto
 		)
 # 01/04/2019 3:19:18 PM
+# 1234567890
 head(planitlla_20190406)
 View(planitlla_20190406)
 
@@ -72,8 +74,9 @@ planitlla_20190406 %>%
 	dplyr::select(nombre, apellido, cargo, name, salario)
 
 
+
 write.csv(planitlla_20190406, #fileEncoding = "UTF-8",
-	paste0(PATH_OUT, "out_planilla_01042019v2.csv"), row.names = FALSE)
+	paste0(PATH_OUT, "out_planilla_01042019v3.csv"), row.names = FALSE)
 
 rm(codes)
 

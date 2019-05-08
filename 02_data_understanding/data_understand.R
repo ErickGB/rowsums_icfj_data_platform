@@ -85,6 +85,13 @@ train_raw %>%
 
 
 train_raw[9,]
+
+train_raw$record_date <- Sys.time()
+train_raw <- train_raw %>% 
+	mutate(url = 'http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp') %>% 
+	dplyr::select(code, name, url, nombre, apellido, cedula, cargo, salario, gasto, estado,
+		fecha_inicio, primer_nombre, total, sex, last_update, record_date) 
+
 write.csv(train_raw, paste0(PATH_OUT, "out_centralgov_salaries.csv"), row.names = FALSE)
 
 # ***********************************************
