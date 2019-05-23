@@ -4,12 +4,23 @@ cat("\014")
 library(tidyverse) # Main Package - Loads dplyr, purrr
 library(rvest)     # HTML Hacking & Web Scraping
 library(furrr)     # Parallel Processing using purrr (iteration)
+library(purrr)     # Functional programming
 library(fs)        # Working with File System
 library(xopen)     # Quickly opening URLs
 library(XML)
 # ***********************************************
 PATH_OUT <- "./00_data/out/salaries/"
 date_time <- as.character(Sys.Date())
+
+# css: http://www.css.gob.pa/p/grid_defensoria/
+# canal de panama: http://www.defensoriadelpueblo.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=26
+# up: http://consulta.up.ac.pa/PortalUp/planilla.aspx
+# utp: http://www.utp.ac.pa/planilla-de-la-utp
+
+# unachi excel: http://www.unachi.ac.pa/transparencia
+# ifaruh pdf: https://www.ifarhu.gob.pa/transparencia/11-3-planillas/ 
+# pandeportes, pdf.
+# tocumenn: http://tocumenpanama.aero/index.php/planilla?find=all
 
 
 # functions ----
@@ -117,6 +128,8 @@ get_employees <- function(codigo) {
 		 nombre = gsub("\"", "", nombre),
 		 primer_nombre = sapply(nombre, function(x) substr(x, 1, gregexpr(pattern =" ", x)[[1]][1] - 1)),
 		 primer_nombre = ifelse(primer_nombre == "", nombre, primer_nombre),
+		 primer_nombre = stringr::str_trim(primer_nombre, side = "right"),
+		 primer_nombre = stringr::str_trim(primer_nombre, side = "left"),		
 		 nombre = stringr::str_trim(nombre, side = "right"),
 		 nombre = stringr::str_trim(nombre, side = "left"),
 		 apellido = gsub("\r\n", "", apellido),
@@ -147,8 +160,12 @@ get_employees <- function(codigo) {
 	return (final_tbl)
 }
 
+
 # ***********************************************
 # load data ----
+# Starting web scraping
+# ***********************************************
+
 url <- 'http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp'
 #xopen(url)
 
@@ -165,6 +182,7 @@ text_values <- html %>%
 	rvest::html_nodes('option') %>% 
 	rvest::html_text() 
 
+# create table 
 entities_tbl <- tibble(
 	codigo = options_values, 
 	entidad = text_values
@@ -185,7 +203,7 @@ final_tbl$record_date <- 	Sys.time()
 nrow(final_tbl)
 
 # ********************************************************************
-# add sex estimation ----
+# performs sex estimation by name ----
 names_tbl <- readr::read_csv("./00_Data/in/names/namesComplete2016.csv")
 names_tbl$X1 <- NULL  
 names_tbl <- names_tbl %>% 
@@ -210,7 +228,6 @@ get_sex_by_name <- function(name)
 	return (sex)
 }
 
-
 final_tbl <- final_tbl %>% 
 	mutate(
 		fecha_inicio = as.Date(fecha_inicio, format = "%d/%m/%Y"),
@@ -221,20 +238,32 @@ final_tbl <- final_tbl %>%
 final_tbl %>% 
 	glimpse()
 
-# ********************************************************************
-# write files ----
-write.csv(final_tbl, paste0(PATH_OUT, "out_centralgov_salaries_at_", date_time, ".csv"), row.names = FALSE) 
+master_tbl <- final_tbl %>% 
+	rename(
+		code = codigo, complete_name = nombre, last_name = apellido, person_id = cedula, 
+		position = cargo, salary = salario, expenses = gasto, total_income = total, status = estado, 
+		start_date = fecha_inicio, first_name = primer_nombre, entity = entidad, update_date = last_update
+		) %>%	dplyr::select(code, complete_name, last_name, person_id, position, salary, expenses, total_income, status, 
+		start_date, first_name, entity, update_date, sex) 
+nrow(master_tbl)
+write.csv(master_tbl, paste0(PATH_OUT, "central_gov_salaries.csv"), row.names = FALSE) 
+table(master_tbl$update_date)
+rm(master_tbl)
 
+# ********************************************************************
+# write to disk 3 files ----
+
+# processing data
+write.csv(final_tbl, paste0(PATH_OUT, "out_centralgov_salaries.csv"), row.names = FALSE) 
+
+# People
 people_one <- final_tbl %>% 
 	dplyr::select(nombre, apellido, cedula, sex, fecha_inicio, record_date)
 write.csv(people_one, paste0(PATH_OUT, "out_people.csv"), row.names = FALSE) 
 
+# Entities
 entities_tbl <- final_tbl %>% 
 	count(entidad, cargo, record_date)
 write.csv(entities_tbl, paste0(PATH_OUT, "out_entities.csv"), row.names = FALSE) 
-
-
-# ********************************************************************
-# upload data to postgres ----
 
 

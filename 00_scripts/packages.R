@@ -1,15 +1,23 @@
+install.packages("tidyverse")
+install.packages("readr")
+install.packages("rvest")
+
 install.packages("bigrquery")
 install.packages("googleCloudStorageR")
-install.packages("rvest")
+
 install.packages("xopen")
 install.packages("furrr")
+install.packages("XML")
 install.packages("purrr")
+
+install.packages("spdplyr")
+install.packages("RPostgreSQL") 
 
 
 # 1084727730786-stm0iqvk0r7b1r641c85pt6fjd59tmpo.apps.googleusercontent.com
 # fv-vQgarUQPES_6STLCaIGJj
 
-
+library()
 
 library(googleCloudStorageR)
 library(bigrquery)
