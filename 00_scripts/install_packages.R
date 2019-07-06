@@ -32,6 +32,9 @@ install.packages("pdp")        # ML global interpretation
 install.packages("caret")      # ML model building
 install.packages("DALEX")      # Machine Learning models are widely used and have various applications in classification or regression 
 
+install.packages("bigrquery")
+install.packages("googleCloudStorageR")
+
 
 
 # The following two commands remove any previously installed H2O packages for R.

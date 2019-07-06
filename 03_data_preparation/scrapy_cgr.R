@@ -199,8 +199,15 @@ employee_salaries_tbl <- entities_tbl %>%
 #get_employees(url, '001')
 final_tbl <- employee_salaries_tbl %>% 
   unnest()
+
+final_tbl <- gov_salaries_abr_tbl
+
+
 final_tbl$record_date <- 	Sys.time()
 nrow(final_tbl)
+
+
+
 
 # ********************************************************************
 # performs sex estimation by name ----
@@ -246,7 +253,7 @@ master_tbl <- final_tbl %>%
 		) %>%	dplyr::select(code, complete_name, last_name, person_id, position, salary, expenses, total_income, status, 
 		start_date, first_name, entity, update_date, sex) 
 nrow(master_tbl)
-write.csv(master_tbl, paste0(PATH_OUT, "central_gov_salaries.csv"), row.names = FALSE) 
+write.csv(master_tbl, paste0(PATH_OUT, "central_gov_salaries_jun.csv"), row.names = FALSE) 
 table(master_tbl$update_date)
 rm(master_tbl)
 
@@ -256,14 +263,114 @@ rm(master_tbl)
 # processing data
 write.csv(final_tbl, paste0(PATH_OUT, "out_centralgov_salaries.csv"), row.names = FALSE) 
 
-# People
-people_one <- final_tbl %>% 
-	dplyr::select(nombre, apellido, cedula, sex, fecha_inicio, record_date)
-write.csv(people_one, paste0(PATH_OUT, "out_people.csv"), row.names = FALSE) 
+# base con cédula, nom, ape, cargo, fecha inicio
+# busca la mínima fecha de inicio
+# filtra la base, solo quedan aquellos con minima fecha de inicio.. no importa el cargo.
 
-# Entities
-entities_tbl <- final_tbl %>% 
-	count(entidad, cargo, record_date)
+get_record <- function(id) {
+	record_tbl <- final_tbl %>% 
+		filter(cedula == id) %>% 
+		select(cedula, nombre, apellido, fecha_inicio) %>% 
+		arrange(desc(fecha_inicio)) %>% head(1)
+	return (record_tbl)
+	}
+
+get_record('4-0750-00162')
+
+out_tbl <- final_tbl %>% 
+	distinct(cedula) 
+
+people_tbl <- bind_rows(purrr::map_df(out_tbl$cedula, .f = function(x) {get_record(x)}))
+people_tbl$
+
+people_tbl <- people_tbl %>% 
+	mutate(
+		people_id = as.integer(rownames(.))
+		) %>% 
+	select(people_id, cedula, nombre, apellido, fecha_inicio)
+
+write.csv(people_tbl, paste0(PATH_OUT, "out_people.csv"), row.names = FALSE) 
+# **************
+# Entities ----
+entities_n_tbl <- final_tbl %>% 
+	count(entidad, cargo, record_date) %>% 
+	rename(cantidad = n) %>% 
+	mutate(key = paste(entidad, cargo, sep = '_')) %>% 
+	mutate(cantidad_anterior = ifelse(key == lag(key), lag(cantidad), NA)) %>% 
+	mutate(key = NULL)
+
+tipos_cantidad <- c('cantidad', 'cantidad_anterior', 'cantidad_diferencia')
+entities_sum_tbl <- final_tbl %>% 
+	group_by(codigo, entidad, cargo, record_date) %>% 
+	summarize(total = sum(total), salario = sum(salario), gasto = sum(gasto), cantidad = n()) %>% 
+	mutate(key = paste(entidad, cargo, sep = '_')) %>% 
+	mutate(
+		cantidad_anterior = ifelse(key == lag(key), lag(cantidad), NA),
+		total_anterior = ifelse(key == lag(key), lag(total), NA),
+		cantidad_diferencia = cantidad - cantidad_anterior,
+		total_diferencia = round(as.numeric(total - total_anterior), digits = 0)
+		) %>% 
+	mutate(key = NULL) %>% 
+	gather(key, value, 5:ncol(.)) %>% 
+	mutate(
+		tipo = ifelse(key %in% tipos_cantidad, "cantidad", "salarios")
+		)
+	
+entities_sum_tbl <- entities_sum_tbl %>% 
+	filter(is.na(value) == FALSE)
+
+entities_sum_tbl[87655:87659,] %>% 
+	head()
+
+entities_sum_tbl %>% 
+	filter(value < 0)
+
+table(entities_sum_tbl$key)
+
 write.csv(entities_tbl, paste0(PATH_OUT, "out_entities.csv"), row.names = FALSE) 
+write.csv(entities_sum_tbl, paste0(PATH_OUT, "out_entities_extended.csv"), row.names = FALSE) 
+# ********************************************************************
+# load to google storage ----
+
+#Sys.setenv("GCS_AUTH_FILE" = "./00_scripts/rowsums-963a7bdf28fe.json") # bigquery reader
+path <- paste0(getwd(), "/00_scripts/rowsums-7a419b99de2f.json")
+Sys.setenv("GCS_AUTH_FILE" = path) # storage
+
+Sys.setenv("GCS_DEFAULT_BUCKET" = "rowsums.com")
+library(googleCloudStorageR)
+gcs_global_bucket('rowsums.com')
+gcs_get_global_bucket()
+
+## attempt upload
+big_file <- "./00_data/out/salaries/out_entities_extended.csv"
+upload_try <- gcs_upload(big_file)
+
+
+
+library(googleAuthR)
+options(googleAuthR.scopes.selected = "https://www.googleapis.com/auth/urlshortner")
+service_token <- gar_auth_service(json_file=path)
+analytics_url <- function(shortUrl, 
+                          timespan = c("allTime", "month", "week","day","twoHours")){
+  
+  timespan <- match.arg(timespan)
+  
+  f <- gar_api_generator("https://www.googleapis.com/urlshortener/v1/url",
+                         "GET",
+                         pars_args = list(shortUrl = "shortUrl",
+                                          projection = "FULL"),
+                         data_parse_function = function(x) { 
+                           a <- x$analytics 
+                           return(a[timespan][[1]])
+                         })
+  
+  f(pars_arguments = list(shortUrl = shortUrl))
+}
+analytics_url("https://goo.gl/2FcFVQbk")
+
+
+
+
+
 
 
