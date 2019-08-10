@@ -46,7 +46,7 @@ get_sex_by_name <- function(name)
 gov_salaries_abr_tbl <- gov_salaries_abr_tbl %>% 
 	mutate(
 		sex = sapply(primer_nombre, function(x) get_sex_by_name(x))
-		)
+)
 
 
 
@@ -57,6 +57,7 @@ colnames(gov_salaries_jun_tbl)
 table(gov_salaries_abr_tbl$last_update)
 table(gov_salaries_may_tbl$last_update)
 table(gov_salaries_jun_tbl$update_date)
+table(gov_salaries_jul_tbl$update_date)
 
 # ********
 # abr 
@@ -93,7 +94,8 @@ gov_salaries_jun_tbl <- gov_salaries_jun_tbl %>%
 		codigo, entidad, url, nombre, apellido, cedula, cargo, salario, gasto, estado, 
 		fecha_inicio, primer_nombre, total, last_update, record_date, sex
 		)
-
+# ********
+# julio (en realidad es junio) 
 gov_salaries_jul_tbl <- gov_salaries_jul_tbl %>%
 	rename(
 		codigo = code, entidad = entity, nombre = complete_name, 
@@ -111,13 +113,13 @@ gov_salaries_jul_tbl <- gov_salaries_jul_tbl %>%
 		fecha_inicio, primer_nombre, total, last_update, record_date, sex
 		)
 
-
-gov_salaries_jun_tbl %>% 
+gov_salaries_jul_tbl %>% 
 	glimpse()
 
 colnames(gov_salaries_abr_tbl)
 colnames(gov_salaries_may_tbl)
 colnames(gov_salaries_jun_tbl)
+colnames(gov_salaries_jul_tbl)
 
 gov_salaries_abr_tbl$record_date[1:10]
 gov_salaries_may_tbl$record_date[1:10]
@@ -126,6 +128,7 @@ gov_salaries_jun_tbl$record_date[1:10]
 gov_salaries_abr_tbl$record_date <- as.Date("2019-04-03")
 gov_salaries_may_tbl$record_date <- as.Date("2019-05-18")
 gov_salaries_jun_tbl$record_date <- as.Date("2019-06-08")
+gov_salaries_jul_tbl$record_date <- as.Date("2019-07-15")
 
 gov_salaries_abr_tbl <- gov_salaries_abr_tbl %>% 
 	mutate(
@@ -189,25 +192,124 @@ final_null_tbl <- final_tbl %>%
 final_tbl <- final_tbl %>% 
 	filter(is.na(fecha_inicio) == FALSE)
 table(final_tbl$record_date)
-
-#write.csv(final_tbl, paste0(PATH_OUT, "out_jun-may-abr.csv"), row.names = FALSE)
-
-
-gov_salaries_jul_tbl <- gov_salaries_jul_tbl %>% 
-	filter(is.na(start_date) == FALSE)	
-write.csv(gov_salaries_jul_tbl, paste0(PATH_OUT, "gov_salaries_jul_2.csv"), row.names = FALSE)
+nrow(final_tbl) # 626,374
+final_tbl %>% 
+	glimpse()
 
 final_tbl$entidad <- ifelse(final_tbl$entidad == 'Otros Gastos de la Administracion', 
 	'Otros Gastos de la Administración', final_tbl$entidad) 
 
 final_tbl$entidad <- ifelse(final_tbl$entidad == 'Ministerio de Comercio e Industria', 
 	'Ministerio de Comercio e Industrias', final_tbl$entidad) 
-	
+
+# **************************************************
+# People
+# base con cédula, nom, ape, cargo, fecha inicio
+# busca la mínima fecha de inicio
+# filtra la base, solo quedan aquellos con minima fecha de inicio.. no importa el cargo.
+# listado de empleados únicos. Evita que se repitan dos personas con nombres diferentes pero la misma cédula
+get_record <- function(id) {
+	record_tbl <- final_tbl %>% 
+		filter(cedula == id) %>% 
+		select(cedula, nombre, apellido, fecha_inicio, sex) %>% 
+		arrange(desc(fecha_inicio)) %>% head(1)
+	return (record_tbl)
+	}
+
+out_tbl <- final_tbl %>% 
+	distinct(cedula) 
+
+people_tbl <- bind_rows(purrr::map_df(out_tbl$cedula, .f = function(x) {get_record(x)}))
+
+people_tbl <- people_tbl %>% 
+	mutate(
+		people_id = as.integer(rownames(.))
+		) %>% 
+	select(people_id, cedula, nombre, apellido, fecha_inicio, sex) %>% 
+	rename(
+		person_id = cedula, 
+		last_name = apellido, 
+		start_date = fecha_inicio
+		)
+
+write.csv(people_tbl, paste0(PATH_OUT, "out_people_all.csv"), row.names = FALSE) 
+
+people_id_tbl <- people_tbl %>% 
+	select(people_id, person_id)
+
+final_tbl <- final_tbl %>% 
+	mutate(
+		employee_salary_id = as.integer(rownames(.))
+		) %>% 
+	rename(
+		person_id = cedula
+		)
+final_tbl <- left_join(final_tbl, people_id_tbl, by = 'person_id')
+table(is.na(final_tbl$people_id))
+
+entities_tbl <- final_tbl %>% 
+	distinct(codigo, entidad) %>% 
+	mutate(entity_id = as.numeric(rownames(.))) %>% 
+	rename(
+		entity_code = codigo, 
+		entity_name = entidad
+		)
+
+records_tbl <- final_tbl %>% 
+	distinct(record_date) %>% 
+	mutate(
+		record_id = as.numeric(rownames(.)),
+		date_processed = as.Date(paste0(year(record_date), "-", (month(record_date) - 1), "-01"))
+		) %>% 
+	select(record_id, record_date, date_processed)
+records_tbl
+
+final_tbl <- final_tbl %>% 
+	rename(
+		entity_name = entidad,
+		url_source = url,
+		first_name = nombre,
+		last_name = apellido, 
+		job_title = cargo, 
+		salary = salario,
+		expenses = gasto,
+		status = estado, 
+		start_date = fecha_inicio,
+		entity_code = codigo
+		) 
+
+final_tbl <- left_join(final_tbl, entities_tbl[, c(1, 3)], by = 'entity_code')
+table(final_tbl$entity_id, useNA = "always")
+final_tbl <- left_join(final_tbl, records_tbl, by = 'record_date')
+table(is.na(final_tblv2$date_processed), useNA = "always")
+
+final_tblv2 <- final_tbl %>% 
+	select(
+		employee_salary_id, people_id, person_id,  entity_id, 
+		entity_name, url_source, first_name, last_name, job_title, 
+		salary, expenses, status, start_date, record_date, record_id, date_processed
+		)
+
+final_tbl %>% 
+	glimpse()
+
+write.csv(final_tbl, paste0(PATH_OUT, "out_may-jun.csv"), row.names = FALSE)
+
+jobs_tbl <- final_tbl %>% 
+	count(job_title) 
+write.csv(jobs_tbl, paste0(PATH_OUT, "out_jobs.csv"), row.names = FALSE)
+
+
+# **************************************************
+# Actual monhton only
+gov_salaries_jul_tbl <- gov_salaries_jul_tbl %>% 
+	filter(is.na(start_date) == FALSE)	
+write.csv(gov_salaries_jul_tbl, paste0(PATH_OUT, "staging_employee_actual_month.csv"), row.names = FALSE)
+
 final_tbl %>% 
 	distinct(entidad, record_date) %>% 
 	count(entidad) %>% 
 	arrange(n)
-
 
 # return all rows from x where there are not matching values in y, keeping just columns from x.
 out_people_jobs_may_tbl <- anti_join(gov_salaries_abr_tbl, gov_salaries_may_tbl,  by="key")
@@ -231,18 +333,13 @@ jun_tbl <- out_people_jobs_jun_tbl %>%
 	count(entidad) %>% 
 	arrange(desc(n))
 
-
 jul_tbl <- out_people_jobs_jul_tbl %>% 
 	count(entidad) %>% 
 	arrange(desc(n))
 
-
 sum(may_tbl$n)
 sum(jun_tbl$n)
 sum(jul_tbl$n)
-
-#https://bit.ly/2GxS8BV
-
 
 finised_tbl <- rbind(out_people_jobs_may_tbl, out_people_jobs_jun_tbl)
 finised_tbl <- rbind(finised_tbl, out_people_jobs_jul_tbl)
@@ -253,6 +350,9 @@ table(finised_tbl$finish_date)
 write.csv(finised_tbl, paste0(PATH_OUT, "out_finished_may_jul_people.csv"), row.names = FALSE)
 write.csv(out_people_jobs_jul_tbl, paste0(PATH_OUT, "out_finished_jul_people.csv"), row.names = FALSE)
 
+
+
+#https://bit.ly/2GxS8BV
 # graphics.wsj.com
 # pro publica
 # gapminer.org

@@ -11,21 +11,11 @@ library(XML)
 # ***********************************************
 PATH_OUT <- "./00_data/out/salaries/"
 date_time <- as.character(Sys.Date())
-
-# css: http://www.css.gob.pa/p/grid_defensoria/
-# canal de panama: http://www.defensoriadelpueblo.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=26
-# up: http://consulta.up.ac.pa/PortalUp/planilla.aspx
-# utp: http://www.utp.ac.pa/planilla-de-la-utp
-
-# unachi excel: http://www.unachi.ac.pa/transparencia
-# ifaruh pdf: https://www.ifarhu.gob.pa/transparencia/11-3-planillas/ 
-# pandeportes, pdf.
-# tocumenn: http://tocumenpanama.aero/index.php/planilla?find=all
-
-
+actual_month <- "jul" # 
+last_update <- as.Date('2019-08-01')
+# ***********************************************
 # functions ----
 get_employees <- function(codigo) {
-	#codigo <- '001'
 	print(codigo)
 	url <- 'http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp'
 	session <- html_session(url)
@@ -156,18 +146,17 @@ entities_tbl <- tibble(
 entities_tbl$url <- url
 entities_tbl
 
-#get_employees('002')
-
 # ********************************************************************
 # PROCESSED IN PARALLEL with furrr (5 minutes) ----
-#plan("multiprocess")
+#get_employees(url, '001')
+
+plan("multiprocess")
 codes <- c('007', '018', '012', '000', '045')
 codes <- c('000', '045')
 employee_salaries_tbl <- entities_tbl %>%
 	  filter(!(codigo %in% codes)) %>% 
     mutate(features = future_map(codigo, get_employees))
 
-#get_employees(url, '001')
 final_tbl <- employee_salaries_tbl %>% 
   unnest()
 
@@ -206,7 +195,7 @@ final_tbl <- final_tbl  %>%
 		 total = salario + gasto
 		)	
 
-final_tbl$last_update <- as.Date('2019-07-15')
+final_tbl$last_update <- last_update
 final_tbl$record_date <- 	Sys.time()
 nrow(final_tbl)
 
@@ -257,11 +246,9 @@ master_tbl <- final_tbl %>%
 nrow(master_tbl)
 write.csv(master_tbl, paste0(PATH_OUT, "central_gov_salaries_jul.csv"), row.names = FALSE) 
 table(master_tbl$update_date)
-rm(master_tbl)
 
-
-gov_salaries_jul_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_jul.csv"))
-gov_salaries_jun_tbl <- gov_salaries_jul_tbl %>%
+# gov_salaries_jul_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_jul.csv"))
+gov_salaries_jun_tbl <- master_tbl %>%
 	rename(
 		codigo = code, entidad = entity, nombre = complete_name, 
 		apellido = last_name, cedula = person_id, cargo = position, 
@@ -285,6 +272,7 @@ gov_salaries_jun_tbl <- gov_salaries_jul_tbl %>%
 		entidad = stringr::str_trim(as.character(entidad), side = "both"),
 		key = paste(cedula, as.character(fecha_inicio), cargo, sep = "_")
 		)
+rm(master_tbl)
 
 gov_salaries_jun_tbl %>% 
 	glimpse()
@@ -302,7 +290,7 @@ write.csv(gov_salaries_jun_tbl, paste0(PATH_OUT, "f_salary_jul.csv"), row.names 
 get_record <- function(id) {
 	record_tbl <- final_tbl %>% 
 		filter(cedula == id) %>% 
-		select(cedula, nombre, apellido, fecha_inicio) %>% 
+		select(cedula, nombre, apellido, fecha_inicio, sex) %>% 
 		arrange(desc(fecha_inicio)) %>% head(1)
 	return (record_tbl)
 	}
@@ -316,7 +304,7 @@ people_tbl <- people_tbl %>%
 	mutate(
 		people_id = as.integer(rownames(.))
 		) %>% 
-	select(people_id, cedula, nombre, apellido, fecha_inicio)
+	select(people_id, cedula, nombre, apellido, fecha_inicio, sex)
 
 write.csv(people_tbl, paste0(PATH_OUT, "out_people.csv"), row.names = FALSE) 
 # **************
@@ -401,6 +389,16 @@ analytics_url("https://goo.gl/2FcFVQbk")
 
 
 
+
+# css: http://www.css.gob.pa/p/grid_defensoria/
+# canal de panama: http://www.defensoriadelpueblo.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=26
+# up: http://consulta.up.ac.pa/PortalUp/planilla.aspx
+# utp: http://www.utp.ac.pa/planilla-de-la-utp
+
+# unachi excel: http://www.unachi.ac.pa/transparencia
+# ifaruh pdf: https://www.ifarhu.gob.pa/transparencia/11-3-planillas/ 
+# pandeportes, pdf.
+# tocumenn: http://tocumenpanama.aero/index.php/planilla?find=all
 
 
 

@@ -1,3 +1,33 @@
+-- Summary steps
+-- load data to staging tables:
+  -- staging_historical_employee: 
+  -- staging_travel_expenses: 
+  -- staging_central_gov_salaries *:
+  -- staging_people: All active employees this month. It is used to validate if there are new employees or some who have stopped.
+  
+-- Load data to final tables: 
+-- Step 0: new historical data 
+--      0.1: delete final table: historical_gov_employees
+--      0.2: uplodad from staging table - data_test.staging_historical_employee
+
+-- Step 1: central gov salaries (1 month)
+--      0.1: delete final table: central_gov_salaries 
+--      0.2: uplodad from staging table - data_test.staging_central_gov_salaries
+
+-- Step 2: insert new employees. 
+
+
+
+
+-- Step 2: If previews employee not in new table, and if that in previews. Go to out employee.
+-- insert into :f_employee_salary_out from rowsums.journalists.f_employee_salary if not in this
+
+-- Step 3: add control date. 
+-- Step 4: Add new people
+-- Step 5: Add new records to f_salary_employee
+
+
+-- *******************************************************************************************
 -- Step 0: new historical
 delete from journalists.historical_gov_employees where 1 = 1
 
