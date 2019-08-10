@@ -26,6 +26,7 @@ date_time <- as.character(Sys.Date())
 # functions ----
 get_employees <- function(codigo) {
 	#codigo <- '001'
+	print(codigo)
 	url <- 'http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp'
 	session <- html_session(url)
   pgform <- html_form(session)[[1]]
@@ -43,12 +44,10 @@ get_employees <- function(codigo) {
 	update <-stringr::str_trim(update, side = "right")
 	update <-stringr::str_trim(update, side = "left")
   
-  
 	result <- submit_form(session, pgform, submit = NULL, httr::add_headers('x-requested-with' = 'XMLHttpRequest'))
 	rows <-  result %>% 
 		rvest::html_nodes(xpath = '//form/table[2]') %>% 
 		rvest::html_nodes('tr')
-	print(length(rows))
 
 	first_name <- result %>% 
 		rvest::html_nodes(xpath = '//form/table[2]') %>% 
@@ -122,41 +121,8 @@ get_employees <- function(codigo) {
 		gasto = other,
 		estado = status,
 		fecha_inicio = date_in
-		)  %>% 
-	mutate(
-		 nombre = gsub("\r\n", "", nombre),
-		 nombre = gsub("\"", "", nombre),
-		 primer_nombre = sapply(nombre, function(x) substr(x, 1, gregexpr(pattern =" ", x)[[1]][1] - 1)),
-		 primer_nombre = ifelse(primer_nombre == "", nombre, primer_nombre),
-		 primer_nombre = stringr::str_trim(primer_nombre, side = "right"),
-		 primer_nombre = stringr::str_trim(primer_nombre, side = "left"),		
-		 nombre = stringr::str_trim(nombre, side = "right"),
-		 nombre = stringr::str_trim(nombre, side = "left"),
-		 apellido = gsub("\r\n", "", apellido),
-		 apellido = gsub(" ", "", apellido),
-		 cedula = gsub("\r\n", "", cedula), 
-		 cedula = gsub(" ", "", cedula), 
-		 salario = gsub("\r\n", "", salario), 
-		 salario = gsub(" ", "", salario), 
-		 salario = gsub(",", "", salario), 
-		 gasto = gsub("\r\n", "", gasto), 
-		 gasto = gsub(" ", "", gasto), 
-		 gasto = gsub(",", "", gasto), 
-		
-		 cargo = gsub("\r\n", "", cargo), 
-		 cargo = stringr::str_trim(cargo, side = "right"),
-		 cargo = stringr::str_trim(cargo, side = "left"),
-		 estado = gsub("\r\n", "", estado), 
-		 estado = gsub(" ", "", estado), 
-		 fecha_inicio = gsub("\r\n", "", fecha_inicio), 
-		 fecha_inicio = gsub(" ", "", fecha_inicio), 
-		 fecha_inicio = substr(fecha_inicio, 1, 10),
-				
-		 salario = as.numeric(salario),
-		 gasto = as.numeric(gasto),
-		 total = salario + gasto,
-		 last_update = update
-		)	
+		) 
+	final_tbl$last_update = update
 	return (final_tbl)
 }
 
@@ -188,26 +154,61 @@ entities_tbl <- tibble(
 	entidad = text_values
 	)
 entities_tbl$url <- url
+entities_tbl
+
+#get_employees('002')
 
 # ********************************************************************
 # PROCESSED IN PARALLEL with furrr (5 minutes) ----
-plan("multiprocess")
+#plan("multiprocess")
+codes <- c('007', '018', '012', '000', '045')
+codes <- c('000', '045')
 employee_salaries_tbl <- entities_tbl %>%
-	  filter(codigo != '000') %>% 
+	  filter(!(codigo %in% codes)) %>% 
     mutate(features = future_map(codigo, get_employees))
 
 #get_employees(url, '001')
 final_tbl <- employee_salaries_tbl %>% 
   unnest()
 
-final_tbl <- gov_salaries_abr_tbl
+final_tbl <- final_tbl  %>% 
+	mutate(
+		 nombre = gsub("\r\n", "", nombre),
+		 nombre = gsub("\"", "", nombre),
+		 primer_nombre = sapply(nombre, function(x) substr(x, 1, gregexpr(pattern =" ", x)[[1]][1] - 1)),
+		 primer_nombre = ifelse(primer_nombre == "", nombre, primer_nombre),
+		 primer_nombre = stringr::str_trim(primer_nombre, side = "right"),
+		 primer_nombre = stringr::str_trim(primer_nombre, side = "left"),		
+		 nombre = stringr::str_trim(nombre, side = "right"),
+		 nombre = stringr::str_trim(nombre, side = "left"),
+		 apellido = gsub("\r\n", "", apellido),
+		 apellido = gsub(" ", "", apellido),
+		 cedula = gsub("\r\n", "", cedula), 
+		 cedula = gsub(" ", "", cedula), 
+		 salario = gsub("\r\n", "", salario), 
+		 salario = gsub(" ", "", salario), 
+		 salario = gsub(",", "", salario), 
+		 gasto = gsub("\r\n", "", gasto), 
+		 gasto = gsub(" ", "", gasto), 
+		 gasto = gsub(",", "", gasto), 
+		
+		 cargo = gsub("\r\n", "", cargo), 
+		 cargo = stringr::str_trim(cargo, side = "right"),
+		 cargo = stringr::str_trim(cargo, side = "left"),
+		 estado = gsub("\r\n", "", estado), 
+		 estado = gsub(" ", "", estado), 
+		 fecha_inicio = gsub("\r\n", "", fecha_inicio), 
+		 fecha_inicio = gsub(" ", "", fecha_inicio), 
+		 fecha_inicio = substr(fecha_inicio, 1, 10),
+				
+		 salario = as.numeric(salario),
+		 gasto = as.numeric(gasto),
+		 total = salario + gasto
+		)	
 
-
+final_tbl$last_update <- as.Date('2019-07-15')
 final_tbl$record_date <- 	Sys.time()
 nrow(final_tbl)
-
-
-
 
 # ********************************************************************
 # performs sex estimation by name ----
@@ -245,6 +246,7 @@ final_tbl <- final_tbl %>%
 final_tbl %>% 
 	glimpse()
 
+# create data for Tableau month dashboard : central_gov_salaries
 master_tbl <- final_tbl %>% 
 	rename(
 		code = codigo, complete_name = nombre, last_name = apellido, person_id = cedula, 
@@ -253,20 +255,50 @@ master_tbl <- final_tbl %>%
 		) %>%	dplyr::select(code, complete_name, last_name, person_id, position, salary, expenses, total_income, status, 
 		start_date, first_name, entity, update_date, sex) 
 nrow(master_tbl)
-write.csv(master_tbl, paste0(PATH_OUT, "central_gov_salaries_jun.csv"), row.names = FALSE) 
+write.csv(master_tbl, paste0(PATH_OUT, "central_gov_salaries_jul.csv"), row.names = FALSE) 
 table(master_tbl$update_date)
 rm(master_tbl)
+
+
+gov_salaries_jul_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_jul.csv"))
+gov_salaries_jun_tbl <- gov_salaries_jul_tbl %>%
+	rename(
+		codigo = code, entidad = entity, nombre = complete_name, 
+		apellido = last_name, cedula = person_id, cargo = position, 
+		salario = salary, gasto = expenses, estado = status, 
+		fecha_inicio = start_date, primer_nombre = first_name, 
+		total = total_income, last_update = update_date
+		) %>% 
+	mutate(
+		url = "http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp",
+		record_date = date_time
+		) %>% 
+	select(
+		codigo, entidad, url, nombre, apellido, cedula, cargo, salario, gasto, estado, 
+		fecha_inicio, primer_nombre, total, last_update, record_date, sex
+		) %>% 
+	mutate(
+		cedula = stringr::str_trim(as.character(cedula), side = "both"),
+		nombre = stringr::str_trim(as.character(nombre), side = "both"),
+		apellido = stringr::str_trim(as.character(apellido), side = "both"),
+		cargo = stringr::str_replace(stringr::str_trim(as.character(cargo), side = "both"), " ", "_"),
+		entidad = stringr::str_trim(as.character(entidad), side = "both"),
+		key = paste(cedula, as.character(fecha_inicio), cargo, sep = "_")
+		)
+
+gov_salaries_jun_tbl %>% 
+	glimpse()
+
+write.csv(gov_salaries_jun_tbl, paste0(PATH_OUT, "f_salary_jul.csv"), row.names = FALSE) 
+
 
 # ********************************************************************
 # write to disk 3 files ----
 
-# processing data
-write.csv(final_tbl, paste0(PATH_OUT, "out_centralgov_salaries.csv"), row.names = FALSE) 
-
 # base con cédula, nom, ape, cargo, fecha inicio
 # busca la mínima fecha de inicio
 # filtra la base, solo quedan aquellos con minima fecha de inicio.. no importa el cargo.
-
+# listado de empleados únicos. Evita que se repitan dos personas con nombres diferentes pero la misma cédula
 get_record <- function(id) {
 	record_tbl <- final_tbl %>% 
 		filter(cedula == id) %>% 
@@ -275,13 +307,10 @@ get_record <- function(id) {
 	return (record_tbl)
 	}
 
-get_record('4-0750-00162')
-
 out_tbl <- final_tbl %>% 
 	distinct(cedula) 
 
 people_tbl <- bind_rows(purrr::map_df(out_tbl$cedula, .f = function(x) {get_record(x)}))
-people_tbl$
 
 people_tbl <- people_tbl %>% 
 	mutate(
@@ -319,9 +348,6 @@ entities_sum_tbl <- final_tbl %>%
 entities_sum_tbl <- entities_sum_tbl %>% 
 	filter(is.na(value) == FALSE)
 
-entities_sum_tbl[87655:87659,] %>% 
-	head()
-
 entities_sum_tbl %>% 
 	filter(value < 0)
 
@@ -329,6 +355,11 @@ table(entities_sum_tbl$key)
 
 write.csv(entities_tbl, paste0(PATH_OUT, "out_entities.csv"), row.names = FALSE) 
 write.csv(entities_sum_tbl, paste0(PATH_OUT, "out_entities_extended.csv"), row.names = FALSE) 
+
+
+
+
+
 # ********************************************************************
 # load to google storage ----
 

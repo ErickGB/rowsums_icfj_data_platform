@@ -182,12 +182,97 @@ data_final_tbl %>%
 	summarize(n = n(), total = sum(as.numeric(data_processed))) %>% 
 	arrange(desc(total))
 
-data_final_tbl$ddate <- as.Date(data_final_tbl$date[1:10], tryFormats = c("%d-%M-%Y"))
+data_final_tbl$ddate <- as.Date(data_final_tbl$date, tryFormats = c("%d-%M-%Y"))
 
 write.csv(data_final_tbl, #fileEncoding = "UTF-8",
 	paste0(PATH_OUT, "out_cnda_3.csv"), row.names = FALSE)
 
+# ****************************
+
+reg01_tbl <- readr::read_csv(paste0(PATH_OUT, "out_cnda.csv"))
+reg02_tbl <- readr::read_csv(paste0(PATH_OUT, "out_cnda_2.csv"))
+reg03_tbl <- readr::read_csv(paste0(PATH_OUT, "out_cnda_3.csv"))
+
+reg01_tbl$text_original <- NULL 
+
+data_tbl <- rbind(reg01_tbl, reg02_tbl)
+data_tbl <- rbind(data_tbl, reg03_tbl)
+
+data_tbl <- data_tbl %>% 
+	mutate(
+		fields = stringr::str_remove(fields, ":"),
+		fields = stringr::str_replace(fields, " ", "_"),
+		data = NULL 
+		)
 
 
+data_tbl <- data_tbl %>% 
+  group_by(fields) %>% 
+  mutate(grouped_id = row_number())
+
+data_tbl <- data_tbl %>% 
+  spread(key = fields, value = data_processed) %>% 
+  select(-grouped_id)
+
+data_tbl <- data_tbl %>%  
+	janitor::clean_names()
+
+data_tbl <- data_tbl %>%  
+	mutate(
+		impuestos_de_importacion = as.numeric(impuestos_de_importacion), 
+		impuestos_de_proteccion_de_petroleo = as.numeric(impuestos_de_proteccion_de_petroleo), 
+		impuestos_isc = as.numeric(impuestos_isc), 
+		impuestos_itbm = as.numeric(impuestos_itbm), 
+		peso_bruto = as.numeric(peso_bruto), 
+		puerto_de_entrada = as.numeric(peso_bruto), 
+		total_a_pagar = as.numeric(total_a_pagar),
+		valor_cif  = as.numeric(valor_cif ),
+		valor_del_flete = as.numeric(valor_del_flete),
+		valor_del_seguro = as.numeric(valor_del_seguro),
+		valor_fob = as.numeric(valor_fob)
+		)
+
+
+
+data_tbl %>% 
+	head()
+
+data_tbl %>% 
+	glimpse()
+
+data_tbl %>% 
+	DataExplorer::plot_missing()
+
+
+
+table(data_tbl$date)
+table(data_tbl$fields)
+
+data_tbl %>% 
+	head()
+
+write.csv(data_tbl, #fileEncoding = "UTF-8",
+	paste0(PATH_OUT, "out_cnda_totalv2.csv"), row.names = FALSE)
+
+
+
+#data_tbl <- readr::read_csv(paste0(PATH_OUT, "out_cnda_totalv2.csv"))
+#data_tbl %>% 
+#	glimpse()
+
+#summary <- data_tbl %>% 
+#	filter(stringr::str_detect(stringr::str_to_lower(description), 'cal hidratada'))
+#View(summary)
+		
+		
+
+		
+		
+		
+		
+		
+		
+		
+		
 
 

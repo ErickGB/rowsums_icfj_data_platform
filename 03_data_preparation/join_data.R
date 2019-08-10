@@ -13,10 +13,10 @@ library(XML)
 PATH_OUT <- "./00_data/out/salaries/"
 date_time <- as.character(Sys.Date())
 
-
 gov_salaries_abr_tbl <- readr::read_csv(paste0(PATH_OUT, "out_planilla_01042019v3.csv"))
 gov_salaries_may_tbl <- readr::read_csv(paste0(PATH_OUT, "out_centralgov_salaries_at_2019-05-18.csv"))
 gov_salaries_jun_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_jun.csv"))
+gov_salaries_jul_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_jul.csv"))
 
 # performs sex estimation by name ----
 names_tbl <- readr::read_csv("./00_Data/in/names/namesComplete2016.csv")
@@ -94,6 +94,24 @@ gov_salaries_jun_tbl <- gov_salaries_jun_tbl %>%
 		fecha_inicio, primer_nombre, total, last_update, record_date, sex
 		)
 
+gov_salaries_jul_tbl <- gov_salaries_jul_tbl %>%
+	rename(
+		codigo = code, entidad = entity, nombre = complete_name, 
+		apellido = last_name, cedula = person_id, cargo = position, 
+		salario = salary, gasto = expenses, estado = status, 
+		fecha_inicio = start_date, primer_nombre = first_name, 
+		total = total_income, last_update = update_date
+		) %>% 
+	mutate(
+		url = "http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp",
+		record_date = date_time
+		) %>% 
+	select(
+		codigo, entidad, url, nombre, apellido, cedula, cargo, salario, gasto, estado, 
+		fecha_inicio, primer_nombre, total, last_update, record_date, sex
+		)
+
+
 gov_salaries_jun_tbl %>% 
 	glimpse()
 
@@ -141,6 +159,15 @@ gov_salaries_jun_tbl <- gov_salaries_jun_tbl %>%
 		key = paste(cedula, as.character(fecha_inicio), cargo, sep = "_")
 		)
 
+gov_salaries_jul_tbl <- gov_salaries_jul_tbl %>% 
+	mutate(
+		cedula = stringr::str_trim(as.character(cedula), side = "both"),
+		nombre = stringr::str_trim(as.character(nombre), side = "both"),
+		apellido = stringr::str_trim(as.character(apellido), side = "both"),
+		cargo = stringr::str_replace(stringr::str_trim(as.character(cargo), side = "both"), " ", "_"),
+		entidad = stringr::str_trim(as.character(entidad), side = "both"),
+		key = paste(cedula, as.character(fecha_inicio), cargo, sep = "_")
+		)
 
 gov_salaries_abr_tbl %>% 
 	glimpse()
@@ -154,6 +181,7 @@ gov_salaries_jun_tbl %>%
 
 final_tbl <- rbind(gov_salaries_abr_tbl, gov_salaries_may_tbl)
 final_tbl <- rbind(final_tbl, gov_salaries_jun_tbl)
+final_tbl <- rbind(final_tbl, gov_salaries_jul_tbl)
 
 final_null_tbl <- final_tbl %>% 
 	filter(is.na(fecha_inicio) == TRUE) # 9 registros
@@ -165,9 +193,9 @@ table(final_tbl$record_date)
 #write.csv(final_tbl, paste0(PATH_OUT, "out_jun-may-abr.csv"), row.names = FALSE)
 
 
-gov_salaries_jun_tbl <- gov_salaries_jun_tbl %>% 
+gov_salaries_jul_tbl <- gov_salaries_jul_tbl %>% 
 	filter(is.na(start_date) == FALSE)	
-write.csv(gov_salaries_jun_tbl, paste0(PATH_OUT, "gov_salaries_jun_2.csv"), row.names = FALSE)
+write.csv(gov_salaries_jul_tbl, paste0(PATH_OUT, "gov_salaries_jul_2.csv"), row.names = FALSE)
 
 final_tbl$entidad <- ifelse(final_tbl$entidad == 'Otros Gastos de la Administracion', 
 	'Otros Gastos de la Administración', final_tbl$entidad) 
@@ -184,24 +212,60 @@ final_tbl %>%
 # return all rows from x where there are not matching values in y, keeping just columns from x.
 out_people_jobs_may_tbl <- anti_join(gov_salaries_abr_tbl, gov_salaries_may_tbl,  by="key")
 out_people_jobs_jun_tbl <- anti_join(gov_salaries_may_tbl, gov_salaries_jun_tbl, by="key")
+out_people_jobs_jul_tbl <- anti_join(gov_salaries_jun_tbl, gov_salaries_jul_tbl, by="key")
 
 out_people_jobs_may_tbl$finish_date <-  as.Date("2019-05-01")
 out_people_jobs_jun_tbl$finish_date <-  as.Date("2019-06-01")
+out_people_jobs_jul_tbl$finish_date <-  as.Date("2019-07-01")
 
-out_people_jobs_may_tbl %>% 
-	count(entidad, cargo) %>% 
+gov_salaries_jul_tbl %>% 
+	filter(start_date >= as.Date("2019-06-01")) %>% 
+	count(entity) %>% 
+	arrange(desc(n))		
+
+may_tbl <- out_people_jobs_may_tbl %>% 
+	count(entidad) %>% 
 	arrange(desc(n))
 
-out_people_jobs_jun_tbl %>% 
-	count(entidad, cargo) %>% 
+jun_tbl <- out_people_jobs_jun_tbl %>% 
+	count(entidad) %>% 
 	arrange(desc(n))
+
+
+jul_tbl <- out_people_jobs_jul_tbl %>% 
+	count(entidad) %>% 
+	arrange(desc(n))
+
+
+sum(may_tbl$n)
+sum(jun_tbl$n)
+sum(jul_tbl$n)
+
+#https://bit.ly/2GxS8BV
+
 
 finised_tbl <- rbind(out_people_jobs_may_tbl, out_people_jobs_jun_tbl)
+finised_tbl <- rbind(finised_tbl, out_people_jobs_jul_tbl)
 finised_tbl %>% 
 	glimpse()
 table(finised_tbl$finish_date)
 
-write.csv(finised_tbl, paste0(PATH_OUT, "out_finished_may_jun_people.csv"), row.names = FALSE)
+write.csv(finised_tbl, paste0(PATH_OUT, "out_finished_may_jul_people.csv"), row.names = FALSE)
+write.csv(out_people_jobs_jul_tbl, paste0(PATH_OUT, "out_finished_jul_people.csv"), row.names = FALSE)
+
+# graphics.wsj.com
+# pro publica
+# gapminer.org
+# information is beautiful
+# data is beautiful
+
+# i paid a bribe
+# datawrapper.de
+# la puerta del orno pa
+
+# images: 
+# pexels
+#fcds184usr
 
 
 # ********************************************************

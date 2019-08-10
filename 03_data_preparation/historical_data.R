@@ -24,6 +24,8 @@ months_tbl <- read_csv("00_data/in/salaries/months.csv")
 employees_2019 %>% 
 	glimpse()
 
+employees_2018 %>% 
+	glimpse()
 
 employees_2018 <- rbind(employees_2018, employees_2019)
 employees_2018 <- employees_2018 %>% 
@@ -82,10 +84,9 @@ table(historical_data_tbl$date)
 table(historical_data_tbl$Variable)
 table(historical_data_tbl$Tipo)
 
-
 historical_data_tbl
 
 write.csv(historical_data_tbl, #fileEncoding = "UTF-8",
-	paste0(PATH_OUT, "out_historical_data_jun.csv"), row.names = FALSE)
+	paste0(PATH_OUT, "out_historical_data_jul.csv"), row.names = FALSE)
 
 

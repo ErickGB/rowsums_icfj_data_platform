@@ -146,11 +146,10 @@ final_tbl <- final_tbl %>%
 		entidad, code, dias, viatico_diario, 
 		person_id, salary, entity_name
 		)
-
-
 table(is.na(final_tbl$entity_name))
 
 correccion_tbl <- readr::read_csv(paste0(PATH_IN, "asamblea/correccion.csv")) 
+correccion_tbl
 
 final_tbl <- left_join(final_tbl, correccion_tbl, by = 'nombre')
 final_tbl <- final_tbl %>% 
