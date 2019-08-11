@@ -23,17 +23,6 @@ get_employees <- function(codigo) {
   pgform <- set_values(pgform, institucion = codigo)
   pgform$fields[[1]]$value <- codigo
   
-  # take last updated 
-  update_data <-  session %>% 
-  	rvest::html_nodes(xpath = '//p') 
-	update <- update_data[9] %>% 
-		html_text()
-	update <- gsub("\r\n", "", update)
-	update <- gsub("\"", "", update)
-	update <- gsub("Fecha de Actualización de los Datos :", "", update)
-	update <-stringr::str_trim(update, side = "right")
-	update <-stringr::str_trim(update, side = "left")
-  
 	result <- submit_form(session, pgform, submit = NULL, httr::add_headers('x-requested-with' = 'XMLHttpRequest'))
 	rows <-  result %>% 
 		rvest::html_nodes(xpath = '//form/table[2]') %>% 
@@ -112,7 +101,7 @@ get_employees <- function(codigo) {
 		estado = status,
 		fecha_inicio = date_in
 		) 
-	final_tbl$last_update = update
+	#final_tbl$last_update = update
 	return (final_tbl)
 }
 
@@ -146,6 +135,17 @@ entities_tbl <- tibble(
 entities_tbl$url <- url
 entities_tbl
 
+# take last updated 
+update_data <-  session %>% 
+  rvest::html_nodes(xpath = '//p') 
+update <- update_data[9] %>% 
+html_text()
+update <- gsub("\r\n", "", update)
+update <- gsub("\"", "", update)
+update <- gsub("Fecha de Actualización de los Datos :", "", update)
+update <-stringr::str_trim(update, side = "right")
+update <-stringr::str_trim(update, side = "left")
+
 # ********************************************************************
 # PROCESSED IN PARALLEL with furrr (5 minutes) ----
 #get_employees(url, '001')
@@ -160,8 +160,10 @@ employee_salaries_tbl <- entities_tbl %>%
 final_tbl <- employee_salaries_tbl %>% 
   unnest()
 
+
 final_tbl <- final_tbl  %>% 
 	mutate(
+		 last_update = update,
 		 nombre = gsub("\r\n", "", nombre),
 		 nombre = gsub("\"", "", nombre),
 		 primer_nombre = sapply(nombre, function(x) substr(x, 1, gregexpr(pattern =" ", x)[[1]][1] - 1)),

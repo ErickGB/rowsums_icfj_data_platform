@@ -259,10 +259,11 @@ records_tbl <- final_tbl %>%
 	distinct(record_date) %>% 
 	mutate(
 		record_id = as.numeric(rownames(.)),
-		date_processed = as.Date(paste0(year(record_date), "-", (month(record_date) - 1), "-01"))
+		date_processed = as.Date(paste0(year(record_date), "-", (month(record_date)), "-01")) - 1
 		) %>% 
 	select(record_id, record_date, date_processed)
 records_tbl
+write.csv(records_tbl, paste0(PATH_OUT, "out_records.csv"), row.names = FALSE)
 
 final_tbl <- final_tbl %>% 
 	rename(
@@ -283,6 +284,9 @@ table(final_tbl$entity_id, useNA = "always")
 final_tbl <- left_join(final_tbl, records_tbl, by = 'record_date')
 table(is.na(final_tblv2$date_processed), useNA = "always")
 
+write.csv(entities_tbl, paste0(PATH_OUT, "out_entities_final.csv"), row.names = FALSE)
+
+
 final_tblv2 <- final_tbl %>% 
 	select(
 		employee_salary_id, people_id, person_id,  entity_id, 
@@ -292,13 +296,48 @@ final_tblv2 <- final_tbl %>%
 
 final_tbl %>% 
 	glimpse()
-
 write.csv(final_tbl, paste0(PATH_OUT, "out_may-jun.csv"), row.names = FALSE)
 
+
+# jobs 
 jobs_tbl <- final_tbl %>% 
 	count(job_title) 
 write.csv(jobs_tbl, paste0(PATH_OUT, "out_jobs.csv"), row.names = FALSE)
 
+job_summary_tbl <- readr::read_csv(paste0(PATH_OUT, "out_jobs_summary.csv"))
+job_summary_tbl$id <- as.numeric(rownames(job_summary_tbl))
+
+jobs_tbl$id <- as.numeric(rownames(jobs_tbl))
+jobs_tbl <- inner_join(jobs_tbl, job_summary_tbl, by = 'id')
+colnames(jobs_tbl) <- c("job_title", "n", "id", "job_position", "seq")
+jobs_tbl <- jobs_tbl %>% 
+	select(id, job_position, job_title)
+
+write.csv(jobs_tbl, paste0(PATH_OUT, "out_final_jobs.csv"), row.names = FALSE)
+jobsv_tbl <- jobs_tbl
+
+final_tbl %>% 
+	glimpse()
+
+final_tbl <- inner_join(final_tbl, jobs_tbl, by = 'job_title')
+table(is.na(final_tblv2$job_position))
+nrow(final_tbl)
+
+final_tbl %>% 
+	glimpse()
+
+final_tbl <- final_tbl %>% 
+	mutate(key1 = paste(person_id, job_title, "_")) %>% 
+	select(
+		employee_salary_id, people_id, person_id,  entity_id, 
+		entity_name, url_source, first_name, last_name, 
+		id, job_title, job_position,
+		salary, expenses, total, status, 
+		start_date, record_id, date_processed, record_date,
+		sex, key, key1
+		) %>% 
+	rename(job_id = id)
+write.csv(final_tbl, paste0(PATH_OUT, "out_may-jun.csv"), row.names = FALSE)
 
 # **************************************************
 # Actual monhton only
@@ -311,19 +350,39 @@ final_tbl %>%
 	count(entidad) %>% 
 	arrange(n)
 
+table(gov_salaries_abr_tbl$last_update)
+
+gov_salaries_abr_tbl <- gov_salaries_abr_tbl %>% 
+	mutate(
+			key1 = paste(cedula, cargo, "_")
+		)
+gov_salaries_may_tbl <- gov_salaries_may_tbl %>% 
+	mutate(
+			key1 = paste(cedula, cargo, "_")
+		)
+gov_salaries_jun_tbl <- gov_salaries_jun_tbl %>% 
+	mutate(
+			key1 = paste(cedula, cargo, "_")
+		)
+gov_salaries_jul_tbl <- gov_salaries_jul_tbl %>% 
+	mutate(
+			key1 = paste(cedula, cargo, "_")
+		)
+
+
+
 # return all rows from x where there are not matching values in y, keeping just columns from x.
-out_people_jobs_may_tbl <- anti_join(gov_salaries_abr_tbl, gov_salaries_may_tbl,  by="key")
-out_people_jobs_jun_tbl <- anti_join(gov_salaries_may_tbl, gov_salaries_jun_tbl, by="key")
-out_people_jobs_jul_tbl <- anti_join(gov_salaries_jun_tbl, gov_salaries_jul_tbl, by="key")
+out_people_jobs_abr_tbl <- anti_join(gov_salaries_abr_tbl, gov_salaries_may_tbl,  by="key1")
+out_people_jobs_may_tbl <- anti_join(gov_salaries_may_tbl, gov_salaries_jun_tbl, by="key1")
+out_people_jobs_jun_tbl <- anti_join(gov_salaries_jun_tbl, gov_salaries_jul_tbl, by="key1")
 
-out_people_jobs_may_tbl$finish_date <-  as.Date("2019-05-01")
-out_people_jobs_jun_tbl$finish_date <-  as.Date("2019-06-01")
-out_people_jobs_jul_tbl$finish_date <-  as.Date("2019-07-01")
+out_people_jobs_abr_tbl$finish_date <-  as.Date("2019-04-30")
+out_people_jobs_may_tbl$finish_date <-  as.Date("2019-05-31")
+out_people_jobs_jun_tbl$finish_date <-  as.Date("2019-06-30")
 
-gov_salaries_jul_tbl %>% 
-	filter(start_date >= as.Date("2019-06-01")) %>% 
-	count(entity) %>% 
-	arrange(desc(n))		
+abr_tbl <- out_people_jobs_abr_tbl %>% 
+	count(entidad) %>% 
+	arrange(desc(n))
 
 may_tbl <- out_people_jobs_may_tbl %>% 
 	count(entidad) %>% 
@@ -333,22 +392,50 @@ jun_tbl <- out_people_jobs_jun_tbl %>%
 	count(entidad) %>% 
 	arrange(desc(n))
 
-jul_tbl <- out_people_jobs_jul_tbl %>% 
-	count(entidad) %>% 
-	arrange(desc(n))
+sum(abr_tbl$n) # 2917 - 2098
+sum(may_tbl$n) # 1000 - 892
+sum(jun_tbl$n) # 7362 - 6671
 
-sum(may_tbl$n)
-sum(jun_tbl$n)
-sum(jul_tbl$n)
-
-finised_tbl <- rbind(out_people_jobs_may_tbl, out_people_jobs_jun_tbl)
-finised_tbl <- rbind(finised_tbl, out_people_jobs_jul_tbl)
+finised_tbl <- rbind(out_people_jobs_abr_tbl, out_people_jobs_may_tbl)
+finised_tbl <- rbind(finised_tbl, out_people_jobs_jun_tbl)
 finised_tbl %>% 
 	glimpse()
 table(finised_tbl$finish_date)
 
-write.csv(finised_tbl, paste0(PATH_OUT, "out_finished_may_jul_people.csv"), row.names = FALSE)
-write.csv(out_people_jobs_jul_tbl, paste0(PATH_OUT, "out_finished_jul_people.csv"), row.names = FALSE)
+write.csv(finised_tbl, paste0(PATH_OUT, "out_finished_may_jun_people.csv"), row.names = FALSE)
+write.csv(out_people_jobs_jun_tbl, paste0(PATH_OUT, "out_finished_jun_people.csv"), row.names = FALSE)
+
+
+nrow(out_people_jobs_abr_tbl)
+nrow(out_people_jobs_abr_tbl_v2)
+
+diference_tbl <- anti_join(out_people_jobs_abr_tbl_v2, out_people_jobs_abr_tbl,  by="key")
+view <- diference_tbl %>% 
+	select(cedula, cargo, fecha_inicio, entidad, nombre, apellido, salario, key, key1)
+View(view)
+
+view2 <- final_tbl %>% 
+	filter(person_id == '8-0709-01829') %>% 
+		select(person_id, job_title, start_date, record_date, entity_name, first_name, last_name, salary, key, key1)
+View(view2)
+
+
+
+# f_employee_salary
+# final_tbl -> out_may-jun.csv
+
+# f_employee_salary_out 
+# finised_tbl -> out_finished_may_jun_people.csv: registros de puestos cesados (cedula + puesto) para 
+
+# d_entity
+# entity_tbl -> out_entities_final.csv 
+
+# d_jobs 
+# jobs_tbl -> out_final_jobs.csv 
+
+# d_records
+
+
 
 
 
