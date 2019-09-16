@@ -12,6 +12,49 @@ library(glue)
 library(vtreat)  # categorical w
 # ************************************************
 
+# *********************************************************
+# anomaly detection with Isolation Forest ----
+# 1 indica anomalías
+# menor que 0.5 indica observaciones normales
+# Si todas las puntuaciones están cerca de 0,5 la muestra completa no parece tener anomalías claramente distintas
+
+get_outliers <- function(data_tbl){
+	localH2O = h2o.init()
+	raw_cloud <-as.h2o(data_tbl, destination_frame="train_hex")
+	
+	n_trees <- 100
+	isolation_forest_model <- h2o.isolationForest(
+		training_frame = raw_cloud,
+		ntrees = n_trees, seed = 12345)
+	
+	predictions <- isolation_forest_model %>% 
+		h2o.predict(newdata = raw_cloud)
+
+	# ¿Cómo sabemos cuál es la media del número de splits? usando un umbral!.. aquellos que están dentro del 95% son normales
+	quantile_frame <- h2o.quantile(predictions, probs = 0.95) 
+	
+	threshold <- as.numeric(quantile_frame[1])
+	predictions_tbl <- predictions %>% as_tibble()
+	#hist(predictions_tbl$predict)
+	#View(predictions_tbl)
+	
+	data_tbl$predict <- as.numeric(predictions_tbl$predict)
+	anomaly <- ifelse(data_tbl$predict  > threshold, 1, 0)
+	# aquellos que están sobre del umbral ----
+	#data_outliers_tbl <- data_tbl %>% 
+	#	filter(predict > threshold) 
+	#data_outliers_tbl$threshold <- threshold
+	
+	h2o.shutdown()
+	return(anomaly)
+} 
+
+
+# *********************************************************
+
+
+
+
 treatment_categorical <- function(data, variable)	
 {
 	#Prepare a treatment plan for the dataframe

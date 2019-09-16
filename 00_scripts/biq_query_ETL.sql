@@ -14,10 +14,51 @@
 --      0.1: delete final table: central_gov_salaries 
 --      0.2: uplodad from staging table - data_test.staging_central_gov_salaries
 
+-- 1. están todos los jobs? .. agregar  .. manual 
+-- 2. Hay personas nuevas? ... agregar .. ok 
+-- 3. crear tabla lote .. 
+
+-- 4. Hay personas desvinculadas? ... pasar a tabla histórica
+-- 5. Pasar a nueva tabla f_employee_salary
+
 -- Step 2: insert new employees. 
+code: STRING, complete_name: STRING, last_name:STRING, person_id: STRING, position: STRING, 
+salary: FLOAT, expenses: FLOAT, total_income: FLOAT, status: STRING, 
+start_date: DATE, first_name: STRING, entity: STRING, update_date: DATE, sex: STRING, url: STRING, record_date: DATE, key: STRING
 
+INSERT INTO journalists.d_entity
+SELECT entity_id, entity_code, entity_name, s from data_test.staging_entity 
 
+-- people_id:INTEGER,person_id:STRING,fist_name:STRING,last_name:STRING,start_date:DATE,sex:STRING,record_date:DATE
+INSERT INTO journalists.d_people 
+SELECT SAFE_CAST(people_id AS INT64), person_id, fist_name, last_name,  start_date , sex, CURRENT_DATE() as record_date 
+from data_test.staging_people 
 
+-- jobs_id:INTEGER,job_position:STRING,job_title:STRING,record_date:DATE
+INSERT INTO journalists.d_jobs 
+SELECT id, job_position, job_title, CURRENT_DATE() as record_date 
+from data_test.staging_jobs 
+
+-- record_id:INTEGER,record_date:DATE,processed_date:DATE,is_actual:INTEGER
+INSERT INTO journalists.d_date_upload
+SELECT record_id, record_date, date_processed , 0 FROM data_test.staging_recods
+
+-- employee_salary_id:INTEGER,people_id:INTEGER,person_id:STRING,entity_id:INTEGER,entity_name:STRING,url_source:STRING,first_name:STRING,last_name:STRING,job_id:INTEGER,job_title:STRING,job_position:STRING,salary:FLOAT,expenses:FLOAT,total:FLOAT,status:STRING,start_date:DATE,record_id:INTEGER,date_processed:DATE,record_date:DATE,sex:STRING,key:STRING,key1:STRING
+INSERT INTO journalists.f_employee_salary
+SELECT * FROM data_test.staging_employee_salaries
+
+-- 17401
+DELETE FROM journalists.f_employee_salary_out WHERE 1 = 1
+insert into journalists.f_employee_salary_out
+SELECT ROW_NUMBER() OVER() row_number, p.people_id, cedula, e.entity_id, e.entity_name, url, 
+nombre, apellido, j.jobs_id, j.job_title, j.job_position, 
+salario, gasto, total, estado, fecha_inicio, u.record_id, o.last_update, o.record_date,
+o.sex, key, key1
+FROM data_test.staging_employee_out o
+LEFT JOIN journalists.d_people p ON p.person_id = o.cedula 
+LEFT JOIN journalists.d_entity e ON SAFE_CAST(e.entity_code AS INT64) = o.codigo
+LEFT JOIN journalists.d_jobs j ON j.job_title = cargo
+LEFT JOIN journalists.d_date_upload u ON u.processed_date = o.last_update
 
 -- Step 2: If previews employee not in new table, and if that in previews. Go to out employee.
 -- insert into :f_employee_salary_out from rowsums.journalists.f_employee_salary if not in this
@@ -25,6 +66,19 @@
 -- Step 3: add control date. 
 -- Step 4: Add new people
 -- Step 5: Add new records to f_salary_employee
+
+
+central_gov_salaries_ago.csv:  principal dashboard
+f_salary_ago.csv: actual month
+out_people.csv: all peaople of the actual month
+out_entities.csv:  actual month, entities list
+
+entities_tbl: out_entities_final.csv .. entities
+people_tbl: out_people_all.csv
+jobs_tbl: out_final_jobs.csv
+records_tbl: out_records.csv dates upload data
+final_tbl: out_may-ago.csv - 782,772 x 22
+
 
 
 -- *******************************************************************************************
@@ -145,6 +199,29 @@ INNER JOIN rowsums.journalists.d_entity e ON f.entity_id = e.entity_id
 WHERE start_date >= '2019-04-01'
 
 
+update journalists.d_jobs
+ set job_position = 'AGENTE_DE INSTRUCCIÓN DELEGADO', job_title = 'AGENTE_DE INSTRUCCIÓN DELEGADO'
+ where jobs_id = 23
 
+
+questions
+porque 
+
+-- 157753
+INSERT INTO journalists.f_employee_salary
+SELECT c.employee_salary_id,
+p.people_id, c.person_id, e.entity_id, e.entity_name, 
+c.url, c.first_name, c.last_name, 
+j. jobs_id , j.job_title, j.job_position, 
+c.salary, c.expenses, c. total_income , c.status, c.start_date, 
+d.record_id, d. processed_date , d.record_date, 
+c.sex, c.key, 
+concat(c.person_id, " ", j.job_title) as key1
+FROM data_test.staging_central_gov_salaries c
+INNER JOIN journalists.d_people p ON p.person_id = c.person_id # 155390
+INNER JOIN journalists.d_entity e ON e.entity_code = c.code  # ok - 157753
+INNER JOIN journalists.d_jobs j ON j.job_title = c.position # ok - 157753
+INNER JOIN journalists.d_date_upload d ON d.record_date = c.record_date
+limit 10
 
 
