@@ -23,11 +23,11 @@ get_camel <- function(x){ #function for camel case get_camel('caTAR, DOHA')
     sapply(strsplit(x, "\\."), function(x) paste(capit(x), collapse=""))
 }
 
-judicial_tbl <- readr::read_csv(paste0(PATH_IN, "judicial/viajes_ene_abril.csv"))
+judicial_tbl <- readr::read_csv(paste0(PATH_IN, "judicial/mayo_julo_2019.csv")) # "judicial/viajes_ene_abril.csv"
 judicial_tbl <- judicial_tbl %>% 
 	clean_names()
 
-legislativo_tbl <- readr::read_csv(paste0(PATH_IN, "asamblea/viajes_resumen.csv"))
+legislativo_tbl <- readr::read_csv(paste0(PATH_IN, "asamblea/jun_jul.csv")) # asamblea/viajes_resumen.csv
 legislativo_tbl <- legislativo_tbl %>% 
 	clean_names()
 
@@ -43,15 +43,15 @@ legislativo_tbl <- legislativo_tbl %>%
 	mutate(
 		fecha_salida = as.Date(fecha_salida,  tryFormats = c("%m/%d/%y")),
 		fecha_regreso = as.Date(fecha_regreso,  tryFormats = c("%m/%d/%y")),
-		pais = map_chr(pai_s_ciudad, function(x) {return(str_split(x, pattern = "/")[[1]][1])}),
-		ciudad = map_chr(pai_s_ciudad, function(x) {
+		pais = map_chr(pais_ciudad, function(x) {return(str_split(x, pattern = "/")[[1]][1])}),
+		ciudad = map_chr(pais_ciudad, function(x) {
 			split <- str_split(x, pattern = "/") 
 			value <- ifelse(length(split) > 1, str_split(x, pattern = "/")[[1]][2], split[[1]][2]) 
 			return(value)
 			}), 
 		pais = get_camel(pais), ciudad = get_camel(ciudad)
 		) %>% 
-	rename(viatico = via_ticos) %>% 
+	rename(viatico = viaticos) %>% 
 	select(nombre, cargo, pais, ciudad, descripcion, fecha_salida, fecha_regreso, pasaje, viatico, tipo, entidad, code)
 
 
@@ -76,6 +76,7 @@ final_tbl <- rbind(judicial_tbl, legislativo_tbl)
 
 final_tbl <- final_tbl %>% 
 	mutate(
+		complete_name = stringr::str_replace(complete_name, "\"", ""),
 		dias = difftime(strptime(fecha_regreso, format = "%Y-%m-%d"), strptime(fecha_salida, format = "%Y-%m-%d"),units="days"),
 		dias = floor(as.numeric(dias)),
 		viatico_diario = round(viatico / dias, digits = 2), 
@@ -166,8 +167,14 @@ final_tbl <- final_tbl %>%
 final_tbl %>% 
 	glimpse()
 
+final_tbl %>% 
+	plot_missing()
 
-write.csv(final_tbl, paste0(PATH_OUT, "out_viajes.csv"), row.names = FALSE)
+final_tbl <- final_tbl %>% 
+	select()
+
+
+write.csv(final_tbl, paste0(PATH_OUT, "out_viajes_jul.csv"), row.names = FALSE)
 
 
 

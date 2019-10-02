@@ -27,6 +27,14 @@ PATH_OUT <- "./00_data/out/salaries/"
 data_raw_tbl <- readr::read_csv(paste0(PATH_OUT, "out_job_title_summary.csv"))
 data_raw_tbl[is.na(data_raw_tbl)] <- 0
 
+outliers_tbl <- readr::read_csv(paste0(PATH_OUT, "out_cluster_5_outlier.csv"))
+outliers_tbl <- outliers_tbl %>% 
+	filter(cluster == 99)
+
+data_raw_tbl <- data_raw_tbl %>% 
+	filter(!(job_title %in% outliers_tbl$job_title))
+
+
 data_raw_tbl %>% 
 	glimpse()
 
@@ -38,7 +46,7 @@ col_skew_names <- data_raw_tbl %>%
 	pull()
 
 data_raw_tbl <- data_raw_tbl %>% 
-	select(job_title, Count, Q1, Median, Q3, Max) 
+	select(job_title, Count, Q1, Median) 
 ncol <- ncol(data_raw_tbl)
 
 rec_obj <- recipe(~ ., data = data_raw_tbl[, 2:ncol]) %>%
@@ -129,6 +137,8 @@ data_raw_tbl$cluster <- as.factor(clusters$cluster)
 table(data_raw_tbl$cluster)
 data_raw_tbl %>% head()
 
+kms_res <- eclust(data_raw_tbl[, 2:num_cols], "kmeans", k = 5, nstart = 20, graph = FALSE)
+fviz_silhouette(kms_res, palette = "jco", ggtheme = theme_classic()) 
 # *******************************************************************************
 # 5. Heatmap of Cluster (diss.ctr <- dist(final$centers)) ----
 # *******************************************************************************

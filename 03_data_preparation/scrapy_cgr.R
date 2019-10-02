@@ -442,6 +442,19 @@ employee_records <- query_exec(sql, project = project, useLegacySql = FALSE)
 
 #GENERATE_UUID()
 #(SHA256(Bizkey)) SurrogateKey
+#tidyverse::tidyverse_update()
+
+bigquery_conn <- bigrquery::src_bigquery(project = "rowsums", dataset = "journalists")
+# List table names
+src_tbls(bigquery_conn)
+
+f_employee_salary_out <- tbl(bigquery_conn, "f_employee_salary_out")
+total_tbl <- f_employee_salary_out %>% 
+	group_by(date_processed, record_date) %>% 
+	summarize(n = n()) 
+show_query(total_tbl)
+
+
 
 
 # ********************************************************************
@@ -521,5 +534,6 @@ analytics_url("https://goo.gl/2FcFVQbk")
 
 
 
+(153849 + 157304 + 158416 + 156577 + 156518 + 157753) / 6
 
 

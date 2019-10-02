@@ -87,6 +87,21 @@ table(historical_data_tbl$Tipo)
 historical_data_tbl
 
 write.csv(historical_data_tbl, #fileEncoding = "UTF-8",
-	paste0(PATH_OUT, "out_historical_data_jul.csv"), row.names = FALSE)
+	paste0(PATH_OUT, "out_historical_data_jul_2.csv"), row.names = FALSE)
+
+# googledrive authentication
+library(bigrquery)
+library(googledrive)
+library(gargle)
+drive_auth(path = "./00_scripts/rowsums-2198b8679813.json")
+project <- "rowsums"
+
+
+# 1: Load principal table: staging_central_gov_salaries
+job <- insert_upload_job("rowsums", "journalists", table = "historical_gov_employees", 
+	values = historical_data_tbl, write_disposition = "WRITE_TRUNCATE")
+wait_for(job)
+
+
 
 
