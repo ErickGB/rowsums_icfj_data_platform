@@ -224,4 +224,79 @@ INNER JOIN journalists.d_jobs j ON j.job_title = c.position # ok - 157753
 INNER JOIN journalists.d_date_upload d ON d.record_date = c.record_date
 limit 10
 
+select record_id, count(*) as count, sum( total) total, (sum( total) / count(*) ) salary, count(distinct(entity_id)) entities
+from journalists.f_employee_salary 
+group by record_id
+order by record_id asc
+limit 7
+
+
+
+/* 
+select count(*), cost_type, sum(expenses) salary, entity_name 
+from journalists.f_travel_expenses 
+where entity_name = 'Asamblea Legislativa'
+group by entity_name, cost_type
+--2890
+*/
+
+select date_processed, record_date, job_title, job_position, entity_name, 
+       count(*) count, sum(total) total, avg(total) avg_total, min(total) min_total, max(total) max_total, STDDEV(total) sd_total
+  from journalists.f_employee_salary 
+  group by date_processed, record_date, job_title, job_position, entity_name
+  limit 100
+
+
+
+/*
+update journalists.f_employee_salary_out
+   set with_change = 'S'
+   where key1 in (
+select key1 from journalists.f_employee_salary 
+ where record_id = 6
+)
+
+select record_date, entity_name, count(*) total from journalists.f_employee_salary_out where key1 in (
+select key1 from journalists.f_employee_salary 
+ where record_id = 6
+)
+group by record_date, entity_name 
+order by count(*) desc
+*/
+
+1
+2019-04-03
+2019-03-31
+0.0
+2	
+2
+2019-05-18
+2019-04-30
+0.0
+3	
+3
+2019-06-08
+2019-05-31
+0.0
+4	
+4
+2019-07-15
+2019-06-30
+0.0
+5	
+5
+2019-08-01
+2019-07-31
+0.0
+6	
+6
+2019-09-02
+2019-08-31
+1.0
+
+
+(153849 + 157304 + 158416 + 156577 + 156518 + 157753) / 6
+
+
+
 
