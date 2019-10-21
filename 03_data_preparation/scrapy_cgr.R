@@ -13,8 +13,8 @@ library(bigrquery)
 # ***********************************************
 PATH_OUT <- "./00_data/out/salaries/"
 date_time <- as.character(Sys.Date())
-actual_month <- "ago" # 
-last_update <- as.Date('2019-09-02')
+actual_month <- "sep" # 
+last_update <- as.Date('2019-10-01')
 # ***********************************************
 # functions ----
 get_employees <- function(codigo) {
@@ -291,7 +291,9 @@ write.csv(master_tbl, paste0(PATH_OUT, "central_gov_salaries_", actual_month,".c
 table(master_tbl$update_date)
 
 
-master_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_", actual_month,".csv"))
+#master_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_", actual_month,".csv"))
+master_tbl %>% 
+	glimpse()
 # ********************************************************************
 # upload file to storage
 
@@ -333,8 +335,14 @@ job <- insert_upload_job("rowsums", "data_test", table = "staging_central_gov_sa
 	values = master_tbl, write_disposition = "WRITE_TRUNCATE")
 wait_for(job)
 
+cgs_tbl <- master_tbl
+cgs_tbl$employee_salary_id <- NULL
+job <- insert_upload_job("rowsums", "journalists", table = "central_gov_salaries", 
+	values = cgs_tbl, write_disposition = "WRITE_TRUNCATE")
+wait_for(job)
+
 # *****************
-# JOBS : new jobs? add manually.. :(
+# JOBS : new jobs? ADD MANUALLY    :(
 sql <- "SELECT position, count(*) as total, avg(salary) salary 
 FROM data_test.staging_central_gov_salaries where position not in (
   SELECT job_title FROM journalists.d_jobs
@@ -366,6 +374,7 @@ id <- query_results$count + 1
 # new people
 sql <- "SELECT person_id FROM data_test.staging_central_gov_salaries where person_id not in (select  person_id from journalists.d_people)"
 new_people_tbl <- query_exec(sql, project = project, useLegacySql = FALSE)
+new_people_tbl
 
 # insert new people
 people_tbl <- bind_rows(purrr::map_df(new_people_tbl$person_id, .f = function(x) {get_record(x)}))
@@ -410,8 +419,8 @@ dates_records <- dates_records %>%
 
 new_record <- dates_records[1, ]
 new_record$record_id <- (max(dates_records$record_id) + 1)
-new_record$record_date <- as.Date("2019-09-02")
-new_record$processed_date <- as.Date("2019-08-31")
+new_record$record_date <- last_update
+new_record$processed_date <- as.Date("2019-09-30")
 new_record$is_actual <- 1
 
 dates_records$is_actual <- 0
@@ -431,7 +440,7 @@ p.people_id, c.person_id, e.entity_id, e.entity_name,
 c.url, c.first_name, c.last_name, 
 j. jobs_id , j.job_title, j.job_position, 
 c.salary, c.expenses, c. total_income , c.status, c.start_date, 
-d.record_id, d. processed_date , d.record_date, 
+cast(d.record_id as INT64) record_id, d. processed_date , d.record_date, 
 c.sex, c.key,concat(c.person_id, " ", j.job_title) as key1
 FROM data_test.staging_central_gov_salaries c
 INNER JOIN journalists.d_people p ON p.person_id = c.person_id 
@@ -453,6 +462,9 @@ total_tbl <- f_employee_salary_out %>%
 	group_by(date_processed, record_date) %>% 
 	summarize(n = n()) 
 show_query(total_tbl)
+
+
+
 
 
 

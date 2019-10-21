@@ -18,51 +18,101 @@ library(caret)      # improve model
 library(DataExplorer)
 library(recipes)
 library(h2o)
+
+library(bigrquery) # R Interface to Google BigQuery API  
+library(dplyr) # Grammar for data manipulation  
+library(DBI) # Interface definition to connect to databases 
+library(ggplot2) # Data Viz package
+
+#install.packages("DBI")
 # *******************************************************************************
 # Constant 
 PATH_IN <- "./00_Data/in/salaries/"
 PATH_OUT <- "./00_data/out/salaries/"
+actual_month <- "sep" # 
+source("./00_scripts/base_functions.R")
 # *******************************************************************************
 # load data ----
-data_raw_tbl <- readr::read_csv(paste0(PATH_OUT, "out_job_title_summary.csv"))
-data_raw_tbl[is.na(data_raw_tbl)] <- 0
+# gcp authentication
+drive_auth(path = "./00_scripts/rowsums-2198b8679813.json")
+project <- "rowsums"
 
-outliers_tbl <- readr::read_csv(paste0(PATH_OUT, "out_cluster_5_outlier.csv"))
-outliers_tbl <- outliers_tbl %>% 
-	filter(cluster == 99)
+projectid<-'rowsums'
+datasetid<-'journalists'
+bq_conn <-  dbConnect(bigquery(), 
+                            project = projectid,
+                            dataset = datasetid, 
+                            use_legacy_sql = FALSE
+                      )
 
-data_raw_tbl <- data_raw_tbl %>% 
-	filter(!(job_title %in% outliers_tbl$job_title))
+bigrquery::dbListTables(bq_conn) # List all the tables in BigQuery data set
+data_raw_tbl <- dplyr::tbl(bq_conn, "f_employee_salary") # connects to a table but no load data in memory
+class(data_raw_tbl)
+
+# get jobs summary 
+jobs_tbl <- data_raw_tbl %>% 
+	mutate(years = lubridate::year(Sys.Date()) - year(start_date)) %>% 
+	group_by(job_title, job_position) %>% 
+	summarize(count = n(), salary = mean(total, na.rm = TRUE), years = round(mean(years, na.rm = TRUE), digits=0)) %>% 
+	arrange(desc(count))
+
+jobs_tbl %>% 
+	head(20) %>% 
+ggplot(aes(x = job_title, y = count)) + geom_bar(stat = "identity") + coord_flip() + labs(y =
+       "No of employees ", x = "Employee Position") + geom_text(aes(label = salary),size = 3)
+
+jobs_tbl
+
+jobs_summary_tbl <- jobs_tbl %>% 
+	collect() 
+
+hist(jobs_summary_tbl$years)
+class(jobs_summary_tbl)
+
+#sql_query <-
+#  "SELECT Offence_category,sum(Dec_2018) Dec_2018,sum(Nov_2018) Nov_2018,sum(Oct_2018) Oct_2018 FROM `uts-mdsi.stds_assignment.crime_by_postcode`
+#  group by Offence_category order by Dec_2018 desc limit 10;"
+#  offence_qtr <- bq_project_query(projectid, sql_query)
 
 
-data_raw_tbl %>% 
-	glimpse()
+# anomaly detection with Isolation Forest
+outliers <- get_outliers(jobs_summary_tbl)
+jobs_summary_tbl$outlier <- outliers
+(table(jobs_summary_tbl$outlier)/nrow(jobs_summary_tbl)) * 100
+
+jobs_summary_tbl %>% 
+	filter(outlier == 1)
+
+jobs_summary_tbl$years <- ifelse(jobs_summary_tbl$years >= 3 & jobs_summary_tbl$years  <= 5, 5, jobs_summary_tbl$years)
+jobs_summary_tbl$years <- ifelse(jobs_summary_tbl$years > 5 & jobs_summary_tbl$years  <= 10, 10, jobs_summary_tbl$years)
+jobs_summary_tbl$years <- ifelse(jobs_summary_tbl$years > 10 & jobs_summary_tbl$years  <= 20, 20, jobs_summary_tbl$years)
+jobs_summary_tbl$years <- ifelse(jobs_summary_tbl$years > 20, 20, jobs_summary_tbl$years)
+jobs_summary_tbl$years <- paste0('x_', jobs_summary_tbl$years)
+
+outliers_tbl <- jobs_summary_tbl %>% 
+	select(job_title, count, salary) %>% 
+	mutate(outlier = 99)
+
+train_tbl <- jobs_summary_tbl %>% 
+	filter(outlier != 1) %>% 
+	select(job_title, count, salary) 
+ncol <- ncol(train_tbl)
 
 
-# Skew data check ----
-col_skew_names <- data_raw_tbl %>% 
-	filter(Skewed > 8) %>% 
-	dplyr::select(job_title) %>% 
-	pull()
-
-data_raw_tbl <- data_raw_tbl %>% 
-	select(job_title, Count, Q1, Median) 
-ncol <- ncol(data_raw_tbl)
-
-rec_obj <- recipe(~ ., data = data_raw_tbl[, 2:ncol]) %>%
+rec_obj <- recipe(~ ., data = train_tbl[, 2:ncol]) %>%
 		#step_YeoJohnson(col_skew_names) %>% 
 	  #step_meanimpute(impute_cols) %>% 
 		#step_rm(remove_col) %>% 
 	  step_center(all_numeric()) %>%  
 	  step_scale(all_numeric()) %>% 
 	  #step_zv(all_predictors()) %>% 
-	  #step_dummy(character_cols) %>%
+	  #step_dummy("years") %>%
     prep()
 rec_obj
 
-train_tbl <- bake(rec_obj, data_raw_tbl[, 2:ncol]) 
+train_prepared_tbl <- bake(rec_obj, train_tbl[, 2:ncol]) 
 #train_tbl$Count <- NULL 
-train_tbl %>% head()
+train_prepared_tbl %>% head()
 
 #*****************************************
 ## Initial Cluster analysis (k selection) ----
@@ -79,13 +129,13 @@ min_clust <- 2      # Hypothesized minimum number of segments
 max_clust <- 400    # Hypothesized maximum number of segments
 
 # Compute k-means clustering over various clusters, k, from minClust to maxClust
-num_cols <- ncol(train_tbl) - 1 # don't include codigo 
+num_cols <- ncol(train_tbl) # don't include codigo 
 for (centr in min_clust:max_clust) {
         i <- centr-(min_clust-1) # relevels start as 1, and increases with centr
         print(i)
         set.seed(777) # For reproducibility
-        km_out[i] <- list(kmeans(train_tbl, centers = centr, iter.max=1000000, nstart=1))
-        sil_out[i] <- list(cluster::silhouette(km_out[[i]][[1]], dist(train_tbl)))
+        km_out[i] <- list(kmeans(train_prepared_tbl, centers = centr, iter.max=1000000, nstart=1))
+        sil_out[i] <- list(cluster::silhouette(km_out[[i]][[1]], dist(train_prepared_tbl)))
         # Used for plotting silhouette average widths
         x[i] = centr  # value of k
         y[i] = summary(sil_out[[i]])[[4]]  # Silhouette average width
@@ -105,21 +155,21 @@ d <- data.frame(x, y) %>%
 	head(10)
 d
 #     x         y
-#1    2 0.5532108
-#2    3 0.4553970
-#3    5 0.4209295
+#1    2 0.5532108   2 0.8852680		 3 0.4344967
+#2    3 0.4553970   3 0.6160007
+#3    5 0.4209295   6 0.5321709
 #4    4 0.4120493
 
 
 # After, create cluster with k selected
-base_centers <- 5 #  0.4715790
+base_centers <- 6 #  0.4715790
 clusters <- list()
 fit <- NA
 # Because k-means is sensitive to starting conditions, the algorithm was randomly initialized 100,000 times
 # Each run of k-means was allowed a maximum of 1,000,000 steps.**
 for (i in 1:10000){ # 100000 
 	#set.seed(i) # For reproducibility
-  class_250 <- kmeans(x=data_raw_tbl[, 2:num_cols], centers= base_centers, iter.max=1000000, nstart=1)
+  class_250 <- kmeans(x=train_prepared_tbl, centers= base_centers, iter.max=1000000, nstart=1)
   fit[i] <- class_250$tot.withinss
   if(i == 1) { 
   	fit[i] <- class_250$tot.withinss 
@@ -132,13 +182,28 @@ for (i in 1:10000){ # 100000
 }
 print(paste("finish run", i, ", tot.withinss: ", clusters$tot.withinss, sep=" "))
 
-
-data_raw_tbl$cluster <- as.factor(clusters$cluster)     
-table(data_raw_tbl$cluster)
-data_raw_tbl %>% head()
-
-kms_res <- eclust(data_raw_tbl[, 2:num_cols], "kmeans", k = 5, nstart = 20, graph = FALSE)
+train_tbl$cluster
+kms_res <- eclust(train_prepared_tbl, "kmeans", k = base_centers, nstart = 20, graph = FALSE)
 fviz_silhouette(kms_res, palette = "jco", ggtheme = theme_classic()) 
+
+# Visualize k-means clusters
+fviz_cluster(kms_res, geom = "point", ellipse.type = "norm",
+             palette = "jco", ggtheme = theme_minimal())
+
+data_raw_tbl %>% 
+	filter(cluster == 3)
+
+train_tbl$cluster <- as.factor(clusters$cluster)     
+train_tbl$job_title <- rownames(train_tbl)
+table(train_tbl$cluster)
+train_tbl %>% head()
+
+
+
+
+jobs_summary_tbl <- left_join(jobs_summary_tbl, train_tbl, by = "job_title")
+
+
 # *******************************************************************************
 # 5. Heatmap of Cluster (diss.ctr <- dist(final$centers)) ----
 # *******************************************************************************
