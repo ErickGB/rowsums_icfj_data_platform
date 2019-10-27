@@ -1,3 +1,9 @@
+get_count <- function(x) {
+	len <- (as.integer(regexpr(' ', x)))  
+	text <- substr(x, 1, (len -1))
+	text <- ifelse(is.na(text), "-1", text)
+	return(as.integer(text))
+}
 
 get_all_products <- function(url) {
 	session <- html_session(url)
@@ -109,6 +115,7 @@ get_all_products <- function(url) {
 		mutate(
 			data_processed = str_replace(data, "B/. ", ""),
 			data_processed = str_replace(data_processed, ",", ""),
+			data_processed = str_trim(data_processed, side = "both"),
 			#data_processed = str_replace(data_processed, " Kg", ""),
 			#data_processed = str_replace(data_processed, " Unidad", ""),
 			fields = ifelse(fields == '"Peso Neto: "', 'Peso Neto:', fields)
@@ -121,12 +128,28 @@ get_all_products <- function(url) {
 	
 	variables_tbl <- variables_tbl %>% 
 		mutate(
+			peso_bruto = str_replace(peso_bruto, ",", ""), 
+			peso_neto = str_replace(peso_neto, ",", ""),
+			total_a_pagar = str_replace(total_a_pagar, ",", ""),
+			impuestos_de_proteccion_de_petroleo = str_replace(impuestos_de_proteccion_de_petroleo, ",", ""),
+			valor_cif = str_replace(valor_cif, ",", ""),
+			valor_fob = str_replace(valor_fob, ",", ""),
+			#total_pagar_txt = str_trim(total_a_pagar),
+			#impuestos_de_proteccion_de_petroleo_txt = str_trim(impuestos_de_proteccion_de_petroleo),
+			#valor_cif_txt = str_trim(valor_cif),
+			#valor_fob_txt = str_trim(valor_fob),
+			cantidad_int = map_int(cantidad, get_count),
+			peso_bruto_kg = str_replace(peso_bruto, " Kg", ""), 
+			peso_neto_kg = str_replace(peso_neto, " Kg", "")		
+		) %>% 
+		mutate(
 			impuestos_de_importacion = as.numeric(impuestos_de_importacion), 
 			impuestos_de_proteccion_de_petroleo = as.numeric(impuestos_de_proteccion_de_petroleo), 
 			impuestos_isc = as.numeric(impuestos_isc), 
 			impuestos_itbm = as.numeric(impuestos_itbm), 
-			#peso_bruto = as.numeric(peso_bruto), 
-			#peso_neto = as.numeric(peso_neto), 
+			cantidad_int = as.integer(cantidad_int), 
+			peso_bruto_kg = as.numeric(peso_bruto_kg), 
+			peso_neto_kg = as.numeric(peso_neto_kg), 
 			total_a_pagar = as.numeric(total_a_pagar), 
 			valor_cif = as.numeric(valor_cif), 
 			valor_fob = as.numeric(valor_fob), 

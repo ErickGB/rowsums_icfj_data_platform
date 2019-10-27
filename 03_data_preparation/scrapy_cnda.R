@@ -1,5 +1,5 @@
 cat("\014")
-#install.packages("V8")
+#install.packages("DataExplorer")
 # ***********************************************
 # Load libraries ----
 library(tidyverse) # Main Package - Loads dplyr, purrr
@@ -10,10 +10,12 @@ library(fs)        # Working with File System
 library(xopen)     # Quickly opening URLs
 library(XML)
 library(stringr) 
+library(DataExplorer)
+
 # ***********************************************
 PATH_OUT <- "./00_data/out/imports/"
-date_start <- "2019-09-01"
-date_end <- "2019-09-30"
+date_start <- "2016-08-01"
+date_end <- "2016-08-31"
 date_time <- as.character(Sys.Date())
 source("./00_scripts/aduanas_records.R")
 
@@ -67,10 +69,22 @@ records_tbl %>%
 records_tbl %>% 
 	head()
 
+table(records_tbl$date)
+record_text
+table(substr(records_tbl$peso_neto, nchar(records_tbl$peso_neto) - 1, nchar(records_tbl$peso_neto)))
+
+records_tbl %>% 
+	DataExplorer::plot_missing()
+
+
 # save montly file 
 write.csv(records_tbl, #fileEncoding = "UTF-8",
 	paste0(PATH_OUT, "out_imports_", date_end,".csv"), row.names = FALSE)
 
+rm(records_tbl, out) # data tables
+rm(get_count, get_all_products) # functions
+rm(count, date_end, date_start, date_time, PATH_OUT, record_text, time, url) # variables
+gc()
 
 
 
