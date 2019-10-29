@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "rowsums",
+  "private_key_id": "2198b8679813825e130ffe1b1bf075a4ecb5ec71",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCzRvbAIkcV+Cm2\nD2w1U2yY7H6dmWx8BgekPn7s43k849KV9GWHIxnsjdHXX0dLA3hs7qCJv1mvj6+O\nRpJPffos3fsnh3QntI4v6LIPWSIvqHRJlIHia/bdS8v+MaDafzhz8WUrv/umI+M6\nt3rJ+btXR6IK5Sxnvhr1EUpDsZBEr5d6F97+qS8deqdyaqgqDvAn3hdSKUwRMuTi\nJrargUAH9XGyX4ZqvlEKXjv/GHYS/wrKgnAIsa1xcBWtBIJnCmJ91hHk9dAQjp4D\nevSU31cyhFQCguI1jzW9ZcunE6+aCHML3ys+t3TWiWeuXRMNoK6e7Zajjv93RANk\nRcONgF3tAgMBAAECggEAHH3hNkzcTk4H1wLheCIfhrhDMSnSd21/5mb2RhCq0nYE\noEdcoVr/QjyRxnBChNXy3CEai3nJN6EWzf5CP3bufRX0VeZtm+fSlyOctNq+F6Pm\ng1EiSUlOTQJAU9AwV7lTT/3jzc2voUpf0ROa5KGXV/ou8xtT8NLiNuN+EX8VRgz7\n5MbojEK3DWVpUh4t0Yq7u27VTcFC/MR45Z1Xwat9CNATAY8Ba6mpWwEqpcDy2Y/a\nD9kHD26+ZjxusIxfRllnflvnuTOI0cL0iV6/6wDrVLQI77chmhqBRCHJlXL+M24V\n3WC4Bo0pzkygqf1xLzSbFGOQlLKVFtnUmSxlAqIMwwKBgQDZAROaYKB8cVO2Kh4Y\nw8KG8bNTR+ghAlML5DpAiW3tIXpfTSUiBkd0qpoug+5QbPzK1Rp/Apb7lQSg2Tw6\neGNuPR6BDykCBJ9+I4Y8qoJMmbfI0HI/P0ytCc00Bky8d141ngPYJ324RErqIcHq\nOkI8OY6M9oGYKAs5gfh3bOkoCwKBgQDTflF5ZWLCU48TzXRXqW8fKfyWuhoFRH5z\nRUUYebegtZD8/xDz8MUkypJ/h0q5QYN7XE2CYjGCCyXpoEBgitunomU/3sCsvDGg\nlfReAzEl1uNi4VjBT5ndkZDCN5pPoIzivAPenh8SeZS502PqGNiPM9EiE4RlAC20\ncF4H7tE05wKBgQC72W66yMKkdwXcP4FmNrACWOC/SxPq3zQ8qwiyLUV3bO+d6A4o\n8f6RQ83MTnDSNkZu3yLcp8VDa7Bh/StiAi0wlL//QLxi/tWCQAZIJeI9pSOvNqJv\nlcAuWrnEO1/aFgr7pxn019rA1H11SFuxA1WrBLgd1pZAvQlacuQ/nYwIGQKBgF+v\nsAb/ku4exgYMl42tz+PGqEw9iNZHRfq7JWbMcwMYArAkarQjg96AdEWUnX8xn94p\nRbwu1v1iM9X+tgG38Wdntu1tx7ifMMjZ74S1ZwAauCgdkn1rmU7AtEDazUsndXaD\n4DBRU/eU4HAuru7ULO6lYAJN2EGmEgeoKzLlnuuTAoGAFghPaW2zSnTPrMJeAsNV\nwNsLEz5yOLq9PsS7iQ42tGrD8faDYVwDz3xJ8avtG+DuANU0KgVzq8QpnNqyyVri\nsToQ61Kbdf/hmd0RnNORxo1fvJYnfeqgvOK1tceEZlb8bqdGn16mHDSVz/dZPKq2\nT85YEH8vJEex53rR3qMuhTY=\n-----END PRIVATE KEY-----\n",
+  "client_email": "rstudio-upload@rowsums.iam.gserviceaccount.com",
+  "client_id": "113809626586571227232",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/rstudio-upload%40rowsums.iam.gserviceaccount.com"
+}
