@@ -51,8 +51,8 @@ country_tbl	%>%
 		glimpse()
 
 country_tbl <- country_tbl	%>% 
-	#mutate(country_code = as.integer(country_code)) %>% 
-	select(alpha_2, alpha_3, iso_3166_2, country_code, name, region, sub_region, region_code, sub_region_code, lat, lon)
+	rename(latitud = lat, longitude = lon) %>% 
+	select(alpha_2, alpha_3, iso_3166_2, country_code, name, region, sub_region, region_code, sub_region_code, latitud, longitude)
 
 country_tbl
 
