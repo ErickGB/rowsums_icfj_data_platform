@@ -9,7 +9,7 @@ library(dplyr)
 PATH_OUT <- "./00_data/out/imports/"
 # ********************************************************************
 # spanish to english months
-month_names_tbl <- tibble(name = c("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "idc"), 
+month_names_tbl <- tibble(name = c("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"), 
 													value = c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"), 
 													id = seq(1, 12, 1)) 
 get_month_id <- function(month_name) {
@@ -39,12 +39,12 @@ set_save_log <- function(data_tbl)
 
 # process data records
 set_process_data <- function(file_name) {
-	message_out <- "insert records completed"
+	message_out <- ""
 	total <- 0
-	
-	out <- tryCatch(
+	tryCatch(
 		{
 			data_tbl <- readr::read_csv(paste0(PATH_OUT, file_name))
+			#temp <- as.character(data_tbl[c(61272), c("valor_del_flete", "text_original")][2])
 			data_tbl <- data_tbl %>% 
 				mutate(
 					mmonth = purrr::map_chr(tolower(substr(date, 4, 6)), get_month_id),
@@ -119,7 +119,6 @@ set_process_data <- function(file_name) {
 			upload_file(third_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
 			print('done!')
 			
-			
 			total_records <- nrow(data_tbl)
 			return(total_records)
 		},
@@ -158,7 +157,6 @@ bq_auth(path = "./00_scripts/rowsums-2198b8679813.json",
 system.time(
 	# load data ----
 	data_tbl <- data_tbl %>% 
-		head(4) %>% 
 		mutate(tbl = furrr::future_map(file_name, set_process_data), .progress = TRUE) %>% 
 		tidyr::unnest()
 )

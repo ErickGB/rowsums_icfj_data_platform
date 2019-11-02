@@ -114,6 +114,7 @@ get_all_products <- function(url) {
 	variables_tbl <- variables_tbl %>% 
 		mutate(
 			data_processed = str_replace(data, "B/. ", ""),
+			data_processed = str_replace(data, ";", ""),
 			data_processed = str_replace(data_processed, ",", ""),
 			data_processed = str_trim(data_processed, side = "both"),
 			#data_processed = str_replace(data_processed, " Kg", ""),
