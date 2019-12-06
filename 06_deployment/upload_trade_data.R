@@ -196,7 +196,8 @@ bq_deauth()
 #114771 valor_del_flete no trailing characters ,624.61 './00_data/out/imports/out_imports_2019-11-30.csv'
 
 
-
+# git config --global user.email "gordon.erick@gmail.com"
+# git config --global user.name "ErickGB"
 
 
 
