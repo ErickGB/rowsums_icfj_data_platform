@@ -1,6 +1,9 @@
 install.packages("tidyverse")  # Set of pkgs for data science: dplyr, ggplot2, purrr, tidyr, ...
 install.packages("readr")      # load data
 install.packages('devtools')
+install.packages("DataExplorer")
+install.packages("janitor")
+
 # shiny
 install.packages("shiny") 
 install.packages("shinydashboard") # dashboard structure
@@ -31,11 +34,37 @@ install.packages("vip")        # ML global interpretation
 install.packages("pdp")        # ML global interpretation
 install.packages("caret")      # ML model building
 install.packages("DALEX")      # Machine Learning models are widely used and have various applications in classification or regression 
+install.packages("VGAM")
 
+install.packages("unpivotr")
+install.packages("tidyxl")
+devtools::install_github("nacnudus/smungs") # excel treatment library - data wrangling
+
+# google cloud platform
 install.packages("bigrquery")
 install.packages("googleCloudStorageR")
+install.packages("googledrive")
+install.packages("gargle")
 
+# Geo and plots 
+install.packages("OpenStreetMap")
+install.packages("PBmapping")
+install.packages("spdplyr") #  makes it possible to use the main dplyr verbs
+install.packages("geojsonio") # Convert to GeoJSON
+install.packages("rmapshaper") # Simplify GeoJSON file
+install.packages("lawn") # view out the coordinates values
+install.packages("classInt") # jenks intervals
+install.packages("GISTools")
+install.packages("leaflet")
+# spatial entropy 
+install.packages("SpatEntropy")
+install.packages("googleway") # Google API keys
+install.packages("tidytransit") # Google GTFS (paradas) 
 
+# analysis
+install.packages("FactoMineR") # correspondence analysis an CP analysis
+install.packages("ade4") # dudi.coa
+install.packages("factoextra")
 
 # The following two commands remove any previously installed H2O packages for R.
 if ("package:h2o" %in% search()) { detach("package:h2o", unload=TRUE) }
@@ -65,39 +94,12 @@ pkgs <- c(
     "writexl"     # Writing to excel files
 )
 
-install.packages(pkgs, dependencies=TRUE)
-install.packages("rsample")
-install.packages("RJSONIO", dependencies=TRUE)
-install.packages("jsonlite", dependencies=TRUE)
+#install.packages(pkgs, dependencies=TRUE)
+#install.packages("rsample")
+#install.packages("RJSONIO", dependencies=TRUE)
+#install.packages("jsonlite", dependencies=TRUE)
 install.packages("rjson", dependencies=TRUE)
-
-# Geo and plots 
-install.packages("OpenStreetMap")
-install.packages("PBmapping")
-install.packages("spdplyr") #  makes it possible to use the main dplyr verbs
-install.packages("geojsonio") # Convert to GeoJSON
-install.packages("rmapshaper") # Simplify GeoJSON file
-install.packages("lawn") # view out the coordinates values
-install.packages("classInt") # jenks intervals
-install.packages("GISTools")
-install.packages("leaflet")
-# spatial entropy 
-install.packages("SpatEntropy")
-install.packages("googleway") # Google API keys
-install.packages("tidytransit") # Google GTFS (paradas) 
-
-# analysis
-install.packages("FactoMineR") # correspondence analysis an CP analysis
-install.packages("ade4") # dudi.coa
-install.packages("factoextra")
-
-install.packages("VGAM")
-install.packages("lime")
-
-
-install.packages("unpivotr")
-install.packages("tidyxl")
-devtools::install_github("nacnudus/smungs") # excel treatment library - data wrangling
+#install.packages("bookdown") # for markdown presentation 
 
 
 # or with devtools: Explore and Visualize Your Data Interactively
@@ -106,6 +108,5 @@ options("esquisse.display.mode" = "browser")
 library(esquisse)
 esquisser()
 
-install.packages("bookdown") # for markdown presentation 
 
 

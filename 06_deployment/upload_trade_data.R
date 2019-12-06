@@ -89,6 +89,12 @@ set_process_data <- function(file_name) {
 					gross_weight = peso_bruto_kg,
 					net_weight = peso_neto_kg
 				)
+			
+			data_tbl$total_pagar_txt <- NULL 
+			data_tbl$impuestos_de_proteccion_de_petroleo_txt <- NULL 
+			data_tbl$valor_cif_txt <- NULL 
+			data_tbl$valor_fob_txt <- NULL 
+			
 			data_tbl %>% 
 				glimpse()
 			
@@ -146,6 +152,7 @@ set_process_data <- function(file_name) {
 list_files <- base::list.files(PATH_OUT)
 data_tbl <- tibble(file_name = list_files)
 data_tbl$process_date <- Sys.Date()
+data_tbl
 
 httr::set_config(httr::config(http_version = 0))
 # autentication - only one time
@@ -154,6 +161,19 @@ bq_auth(path = "./00_scripts/rowsums-2198b8679813.json",
 				cache = gargle::gargle_oauth_cache(),
 				use_oob = gargle::gargle_oob_default())
 				
+drive_auth(path = "./00_scripts/rowsums-2198b8679813.json")
+project <- "rowsums"
+
+projectid<-'rowsums'
+datasetid<-'journalists'
+bq_conn <-  dbConnect(bigquery(), 
+											project = projectid,
+											dataset = datasetid, 
+											use_legacy_sql = FALSE
+)
+
+
+
 system.time(
 	# load data ----
 	data_tbl <- data_tbl %>% 
@@ -161,7 +181,20 @@ system.time(
 		tidyr::unnest()
 )
 
+data_tbl %>% 
+	head()
+
 bq_deauth()
+
+
+#row             col               expected  actual                                               file
+#45524 valor_del_flete no trailing characters ,826.09 './00_data/out/imports/out_imports_2019-10-31.csv'
+#61977 valor_del_flete no trailing characters ,623.66 './00_data/out/imports/out_imports_2019-10-31.csv'
+#151690 valor_del_flete no trailing characters ,700.95 './00_data/out/imports/out_imports_2019-10-31.csv'
+#185851 valor_del_flete no trailing characters ,368.78 './00_data/out/imports/out_imports_2019-10-31.csv'
+#row             col               expected  actual                                               file
+#114771 valor_del_flete no trailing characters ,624.61 './00_data/out/imports/out_imports_2019-11-30.csv'
+
 
 
 

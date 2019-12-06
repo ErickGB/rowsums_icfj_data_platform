@@ -7,6 +7,9 @@ get_count <- function(x) {
 
 get_all_products <- function(url) {
 	session <- html_session(url)
+	operation_type <- substr(url, 133, 133)
+	print(url)
+
 	
 		# date, master table
 	date_var <- session %>% 
@@ -113,8 +116,13 @@ get_all_products <- function(url) {
 	
 	variables_tbl <- variables_tbl %>% 
 		mutate(
+			data_processed = str_replace(data, "B/. ", "")
+		)
+	
+	variables_tbl <- variables_tbl %>% 
+		mutate(
 			data_processed = str_replace(data, "B/. ", ""),
-			data_processed = str_replace(data, ";", ""),
+			data_processed = str_replace(data_processed, ";", ""),
 			data_processed = str_replace(data_processed, ",", ""),
 			data_processed = str_trim(data_processed, side = "both"),
 			#data_processed = str_replace(data_processed, " Kg", ""),
@@ -135,27 +143,46 @@ get_all_products <- function(url) {
 			impuestos_de_proteccion_de_petroleo = str_replace(impuestos_de_proteccion_de_petroleo, ",", ""),
 			valor_cif = str_replace(valor_cif, ",", ""),
 			valor_fob = str_replace(valor_fob, ",", ""),
-			#total_pagar_txt = str_trim(total_a_pagar),
-			#impuestos_de_proteccion_de_petroleo_txt = str_trim(impuestos_de_proteccion_de_petroleo),
-			#valor_cif_txt = str_trim(valor_cif),
-			#valor_fob_txt = str_trim(valor_fob),
+			total_pagar_txt = str_trim(total_a_pagar),
+			impuestos_de_proteccion_de_petroleo_txt = str_trim(impuestos_de_proteccion_de_petroleo),
+			valor_cif_txt = str_trim(valor_cif),
+			valor_fob_txt = str_trim(valor_fob),
 			cantidad_int = map_int(cantidad, get_count),
 			peso_bruto_kg = str_replace(peso_bruto, " Kg", ""), 
 			peso_neto_kg = str_replace(peso_neto, " Kg", "")		
-		) %>% 
-		mutate(
-			impuestos_de_importacion = as.numeric(impuestos_de_importacion), 
-			impuestos_de_proteccion_de_petroleo = as.numeric(impuestos_de_proteccion_de_petroleo), 
-			impuestos_isc = as.numeric(impuestos_isc), 
-			impuestos_itbm = as.numeric(impuestos_itbm), 
-			cantidad_int = as.integer(cantidad_int), 
-			peso_bruto_kg = as.numeric(peso_bruto_kg), 
-			peso_neto_kg = as.numeric(peso_neto_kg), 
-			total_a_pagar = as.numeric(total_a_pagar), 
-			valor_cif = as.numeric(valor_cif), 
-			valor_fob = as.numeric(valor_fob), 
-			valor_del_seguro = as.numeric(valor_del_seguro)
+		) 
+	
+	if(operation_type == "I") {
+		variables_tbl <- variables_tbl %>% 
+			mutate(
+				impuestos_de_importacion = as.numeric(impuestos_de_importacion), # separar preguntando si es I o E.
+				impuestos_de_proteccion_de_petroleo = as.numeric(impuestos_de_proteccion_de_petroleo), 
+				impuestos_isc = as.numeric(impuestos_isc), 
+				impuestos_itbm = as.numeric(impuestos_itbm), 
+				cantidad_int = as.integer(cantidad_int), 
+				peso_bruto_kg = as.numeric(peso_bruto_kg), 
+				peso_neto_kg = as.numeric(peso_neto_kg), 
+				total_a_pagar = as.numeric(total_a_pagar), 
+				valor_cif = as.numeric(valor_cif), 
+				valor_fob = as.numeric(valor_fob), 
+				valor_del_seguro = as.numeric(valor_del_seguro)
 			)
+	} else {
+		variables_tbl <- variables_tbl %>% 
+			mutate(
+				impuestos_de_exportacion = as.numeric(impuestos_de_exportacion), # separar preguntando si es I o E.
+				impuestos_de_proteccion_de_petroleo = as.numeric(impuestos_de_proteccion_de_petroleo), 
+				impuestos_isc = as.numeric(impuestos_isc), 
+				impuestos_itbm = as.numeric(impuestos_itbm), 
+				cantidad_int = as.integer(cantidad_int), 
+				peso_bruto_kg = as.numeric(peso_bruto_kg), 
+				peso_neto_kg = as.numeric(peso_neto_kg), 
+				total_a_pagar = as.numeric(total_a_pagar), 
+				valor_cif = as.numeric(valor_cif), 
+				valor_fob = as.numeric(valor_fob), 
+				valor_del_seguro = as.numeric(valor_del_seguro)
+			)
+	}
 	
 	data_final_tbl <- inner_join(data_tbl, variables_tbl, by = 'key')
 	
