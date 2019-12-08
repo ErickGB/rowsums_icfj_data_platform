@@ -13,96 +13,149 @@ library(bigrquery)
 # ***********************************************
 PATH_OUT <- "./00_data/out/salaries/"
 date_time <- as.character(Sys.Date())
-actual_month <- "sep" # 
-last_update <- as.Date('2019-10-01')
+actual_month <- "nov" # 
+last_update <- as.Date('2019-11-01')
 # ***********************************************
 # functions ----
-get_employees <- function(codigo) {
-	print(codigo)
-	url <- 'http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp'
-	session <- html_session(url)
-  pgform <- html_form(session)[[1]]
-  pgform <- set_values(pgform, institucion = codigo)
-  pgform$fields[[1]]$value <- codigo
+get_employees <- function(codigo, estado) {
+	print(paste0("codigo: ", codigo, " status:", estado))
+  #<form> 'f_institucion' (POST Index_planillagub3.asp)
+  #<select> 'institucion' [0/26]
+  #<input submit> 'boton_01': Buscar
+  #<input button> 'boton_02': Limpiar
+  #<input text> 'nombre': 
+  #	<input text> 'apellido': 
+  #	<input text> 'cargo': 
+  #	<select> 'estado' [0/11]
+	
+  final_tbl <- tibble(
+  	nombre = "sin_datos", 
+  	apellido = "sin_datos", 
+  	cedula = "sin_datos",
+  	cargo = "sin_datos",
+  	salario = "0",
+  	gasto = "0",
+  	estado = "sin_datos",
+  	fecha_inicio = as.character("03/01/2019")
+  ) 
   
-	result <- submit_form(session, pgform, submit = NULL, httr::add_headers('x-requested-with' = 'XMLHttpRequest'))
-	rows <-  result %>% 
-		rvest::html_nodes(xpath = '//form/table[2]') %>% 
-		rvest::html_nodes('tr')
-
-	first_name <- result %>% 
-		rvest::html_nodes(xpath = '//form/table[2]') %>% 
-		rvest::html_nodes('tr') %>% 
-		.[3:length(rows)] %>% 
-		#rvest::html_table()
-		rvest::html_nodes(xpath = 'td[1]') %>% 
-		rvest::html_text()
-	
-	last_name <- result %>% 
-		rvest::html_nodes(xpath = '//form/table[2]') %>% 
-		rvest::html_nodes('tr') %>% 
-		.[3:length(rows)] %>% 
-		#rvest::html_table()
-		rvest::html_nodes(xpath = 'td[2]') %>% 
-		rvest::html_text()
-	
-	personal_id <- result %>% 
-		rvest::html_nodes(xpath = '//form/table[2]') %>% 
-		rvest::html_nodes('tr') %>% 
-		.[3:length(rows)] %>% 
-		#rvest::html_table()
-		rvest::html_nodes(xpath = 'td[3]') %>% 
-		rvest::html_text()
-	
-	job <- result %>% 
-		rvest::html_nodes(xpath = '//form/table[2]') %>% 
-		rvest::html_nodes('tr') %>% 
-		.[3:length(rows)] %>% 
-		#rvest::html_table()
-		rvest::html_nodes(xpath = 'td[4]') %>% 
-		rvest::html_text()
-	
-	salary <- result %>% 
-		rvest::html_nodes(xpath = '//form/table[2]') %>% 
-		rvest::html_nodes('tr') %>% 
-		.[3:length(rows)] %>% 
-		#rvest::html_table()
-		rvest::html_nodes(xpath = 'td[5]') %>% 
-		rvest::html_text()
-	
-	other <- result %>% 
-		rvest::html_nodes(xpath = '//form/table[2]') %>% 
-		rvest::html_nodes('tr') %>% 
-		.[3:length(rows)] %>% 
-		#rvest::html_table()
-		rvest::html_nodes(xpath = 'td[6]') %>% 
-		rvest::html_text()
-	
-	status <- result %>% 
-		rvest::html_nodes(xpath = '//form/table[2]') %>% 
-		rvest::html_nodes('tr') %>% 
-		.[3:length(rows)] %>% 
-		#rvest::html_table()
-		rvest::html_nodes(xpath = 'td[7]') %>% 
-		rvest::html_text()
-	
-	date_in <- result %>% 
-		rvest::html_nodes(xpath = '//form/table[2]') %>% 
-		rvest::html_nodes('tr') %>% 
-		.[3:length(rows)] %>% 
-		rvest::html_nodes(xpath = 'td[8]') %>% 
-		rvest::html_text()
+  tryCatch(
+  {
+  		#codigo <- "001"
+  		#estado <- "10"
+  		url <- 'http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp'
+  		session <- html_session(url)
+  		pgform <- html_form(session)[[1]]
+  		pgform <- set_values(pgform, institucion = codigo)
+  		pgform <- set_values(pgform, estado = estado)
+  		pgform$fields[[1]]$value <- codigo
+  		pgform$fields[[7]]$value <- estado
+  		
+			result <- submit_form(session, pgform, submit = NULL, httr::add_headers('x-requested-with' = 'XMLHttpRequest'))
+			rows <-  result %>% 
+				rvest::html_nodes(xpath = '//form/table[2]') %>% 
+				rvest::html_nodes('tr')
 		
-	final_tbl <- tibble(
-		nombre = first_name, 
-		apellido = last_name, 
-		cedula = personal_id,
-		cargo = job,
-		salario = salary,
-		gasto = other,
-		estado = status,
-		fecha_inicio = date_in
-		) 
+		  # Are data?
+			print(paste0("total:", length(rows)))
+			if(length(rows) > 2) {
+				first_name <- result %>% 
+					rvest::html_nodes(xpath = '//form/table[2]') %>% 
+					rvest::html_nodes('tr') %>% 
+					.[3:length(rows)] %>% 
+					#rvest::html_table()
+					rvest::html_nodes(xpath = 'td[1]') %>% 
+					rvest::html_text()
+				
+				last_name <- result %>% 
+					rvest::html_nodes(xpath = '//form/table[2]') %>% 
+					rvest::html_nodes('tr') %>% 
+					.[3:length(rows)] %>% 
+					#rvest::html_table()
+					rvest::html_nodes(xpath = 'td[2]') %>% 
+					rvest::html_text()
+				
+				personal_id <- result %>% 
+					rvest::html_nodes(xpath = '//form/table[2]') %>% 
+					rvest::html_nodes('tr') %>% 
+					.[3:length(rows)] %>% 
+					#rvest::html_table()
+					rvest::html_nodes(xpath = 'td[3]') %>% 
+					rvest::html_text()
+				
+				job <- result %>% 
+					rvest::html_nodes(xpath = '//form/table[2]') %>% 
+					rvest::html_nodes('tr') %>% 
+					.[3:length(rows)] %>% 
+					#rvest::html_table()
+					rvest::html_nodes(xpath = 'td[4]') %>% 
+					rvest::html_text()
+				
+				salary <- result %>% 
+					rvest::html_nodes(xpath = '//form/table[2]') %>% 
+					rvest::html_nodes('tr') %>% 
+					.[3:length(rows)] %>% 
+					#rvest::html_table()
+					rvest::html_nodes(xpath = 'td[5]') %>% 
+					rvest::html_text()
+				
+				other <- result %>% 
+					rvest::html_nodes(xpath = '//form/table[2]') %>% 
+					rvest::html_nodes('tr') %>% 
+					.[3:length(rows)] %>% 
+					#rvest::html_table()
+					rvest::html_nodes(xpath = 'td[6]') %>% 
+					rvest::html_text()
+				
+				status <- result %>% 
+					rvest::html_nodes(xpath = '//form/table[2]') %>% 
+					rvest::html_nodes('tr') %>% 
+					.[3:length(rows)] %>% 
+					#rvest::html_table()
+					rvest::html_nodes(xpath = 'td[7]') %>% 
+					rvest::html_text()
+				
+				date_in <- result %>% 
+					rvest::html_nodes(xpath = '//form/table[2]') %>% 
+					rvest::html_nodes('tr') %>% 
+					.[3:length(rows)] %>% 
+					rvest::html_nodes(xpath = 'td[8]') %>% 
+					rvest::html_text()
+				
+				temp_tbl <- tibble(
+					nombre = first_name, 
+					apellido = last_name, 
+					cedula = personal_id,
+					cargo = job,
+					salario = salary,
+					gasto = other,
+					estado = status,
+					fecha_inicio = date_in
+				) 
+				
+				final_tbl <- rbind(final_tbl, temp_tbl)
+				final_tbl <- final_tbl %>% 
+					filter(nombre != "sin_datos")
+				
+			}
+  	}, # end try
+			error=function(cond) {
+				#message(paste("URL does not seem to exist:", url))
+				#message("Here's the original error message:")
+				#message(cond)
+				final_tbl$nombre[1] <- as.character(cond)
+				# Choose a return value in case of error
+				#return(NA)
+	}, 
+  warning=function(cond) {
+  	final_tbl$nombre[1] <- as.character(cond)
+  	#message(paste("URL caused a warning:", url))
+  	#message("Here's the original warning message:")
+  	#message(cond)
+  	# Choose a return value in case of warning
+  	#return(NULL)
+  })
+	
 	#final_tbl$last_update = update
 	return (final_tbl)
 }
@@ -129,13 +182,27 @@ text_values <- html %>%
 	rvest::html_nodes('option') %>% 
 	rvest::html_text() 
 
-# create table 
+options_status_values <- html %>% 
+	rvest::html_nodes('[name="estado"]') %>%
+	rvest::html_nodes('option') %>% 
+	rvest::html_attr("value") 
+
+
+# create table - Entities
 entities_tbl <- tibble(
 	codigo = options_values, 
 	entidad = text_values
 	)
 entities_tbl$url <- url
 entities_tbl
+# status: 1. Permanente, Eventual, Contrato, Interino Abierto, Interino Hasta Fin de Año.... otros....
+status_tbl <- tibble(status = options_status_values)
+
+# cross join: Search  Entity by entity and status by status
+entities_tbl <- crossing(entities_tbl, status_tbl)
+entities_tbl <- entities_tbl %>% 
+	filter(status != 0) %>% 
+	filter(codigo != '000')
 
 # take last updated 
 update_data <-  html %>% 
@@ -150,20 +217,20 @@ update <-stringr::str_trim(update, side = "left")
 
 # ********************************************************************
 # PROCESSED IN PARALLEL with furrr (5 minutes) ----
-#get_employees(url, '001')
+#get_employees('007', '1')
 
 plan("multiprocess")
 codes <- c('007', '018', '012', '000', '045')
 codes <- c('000')
 employee_salaries_tbl <- entities_tbl %>%
-	  filter(!(codigo %in% codes)) %>% 
-    mutate(features = future_map(codigo, get_employees))
+	  #filter(!(codigo %in% codes)) %>% 
+    mutate(features = future_map2(codigo, status, get_employees))
 
 final_tbl <- employee_salaries_tbl %>% 
   unnest()
 
-
 final_tbl <- final_tbl  %>% 
+	filter(nombre != "sin_datos") %>% # elimina los registros vacios 
 	mutate(
 		 last_update = update,
 		 nombre = gsub("\r\n", "", nombre),
@@ -179,11 +246,14 @@ final_tbl <- final_tbl  %>%
 		 cedula = gsub("\r\n", "", cedula), 
 		 cedula = gsub(" ", "", cedula), 
 		 salario = gsub("\r\n", "", salario), 
+		 salario = stringr::str_replace(salario, " ", ""),
 		 salario = gsub(" ", "", salario), 
 		 salario = gsub(",", "", salario), 
+		 salario =  stringr::str_trim(salario, side = 'both'),
 		 gasto = gsub("\r\n", "", gasto), 
 		 gasto = gsub(" ", "", gasto), 
 		 gasto = gsub(",", "", gasto), 
+		 gasto =  stringr::str_trim(gasto, side = 'both'),
 		
 		 cargo = gsub("\r\n", "", cargo), 
 		 cargo = stringr::str_trim(cargo, side = "right"),
@@ -196,16 +266,23 @@ final_tbl <- final_tbl  %>%
 				
 		 salario = as.numeric(salario),
 		 gasto = as.numeric(gasto),
-		 total = salario + gasto
+		 total = salario + gasto,
+		 status = NULL 
 		)	
 
 final_tbl$last_update <- last_update
 final_tbl$record_date <- 	Sys.time()
 nrow(final_tbl)
 
+final_tbl %>% 
+	DataExplorer::plot_missing()
+
+final_tbl %>% 
+	glimpse()
+
 # ********************************************************************
 # performs sex estimation by name ----
-names_tbl <- readr::read_csv("./00_Data/in/names/namesComplete2016.csv")
+names_tbl <- readr::read_csv("./00_data/in/names/namesComplete2016.csv")
 names_tbl$X1 <- NULL  
 names_tbl <- names_tbl %>% 
 	group_by(firstname, sex) %>% 
