@@ -50,10 +50,34 @@ data_raw_tbl <- dplyr::tbl(bq_conn, "fact_agg_product") # connects to a table bu
 class(data_raw_tbl)
 
 data_raw_tbl <- collect(data_raw_tbl)
+data_raw_tbl %>% 
+	glimpse()
+
+
+# variable skewness
+skewness_names <- data_raw_tbl %>% 
+	select_if(is.numeric) %>% 
+	map_df(skewness) %>% 
+	gather(factor_key = 1) %>% 
+	arrange(desc(value)) %>% 
+	filter(value >= 0.75) %>% 
+	pull(key) %>% as.character()
+skewness_names
+
+# variable null 
+withnull_names <- data_raw_tbl %>% 
+	map_df(is.na) %>% 
+	gather(factor_key = TRUE) %>% 
+	filter(value == TRUE) %>% 
+	distinct(key) %>% 
+	pull(key) %>% 
+	as.character()
+
+
 
 rec_obj <- recipe(~ ., data = train_tbl[, 2:ncol]) %>%
-		#step_YeoJohnson(col_skew_names) %>% 
-	  #step_meanimpute(impute_cols) %>% 
+		#step_YeoJohnson(skewness_names) %>% 
+	  #step_meanimpute(withnull_names) %>% 
 		#step_rm(remove_col) %>% 
 	  step_center(all_numeric()) %>%  
 	  step_scale(all_numeric()) %>% 
