@@ -19,6 +19,8 @@ library(DataExplorer)
 library(recipes)
 library(h2o)
 
+library(googledrive)
+library(gargle)
 library(bigrquery) # R Interface to Google BigQuery API  
 library(dplyr) # Grammar for data manipulation  
 library(DBI) # Interface definition to connect to databases 
@@ -49,9 +51,16 @@ bigrquery::dbListTables(bq_conn) # List all the tables in BigQuery data set
 data_raw_tbl <- dplyr::tbl(bq_conn, "fact_agg_product") # connects to a table but no load data in memory
 class(data_raw_tbl)
 
+#data_raw_tbl <- data_raw_tbl %>% 
+#	group_by() %>% 
+#	summarize()
+
+
 data_raw_tbl <- collect(data_raw_tbl)
 data_raw_tbl %>% 
 	glimpse()
+
+
 
 
 # variable skewness
@@ -75,13 +84,18 @@ withnull_names <- data_raw_tbl %>%
 
 
 
+
+
+
+
+
 rec_obj <- recipe(~ ., data = train_tbl[, 2:ncol]) %>%
 		#step_YeoJohnson(skewness_names) %>% 
 	  #step_meanimpute(withnull_names) %>% 
 		#step_rm(remove_col) %>% 
 	  step_center(all_numeric()) %>%  
 	  step_scale(all_numeric()) %>% 
-	  #step_zv(all_predictors()) %>% 
+	  step_zv(all_predictors()) %>% 
 	  #step_dummy("years") %>%
     prep()
 rec_obj
