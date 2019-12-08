@@ -229,7 +229,6 @@ employee_salaries_tbl <- entities_tbl %>%
 final_tbl <- employee_salaries_tbl %>% 
   unnest()
 
-
 final_tbl <- final_tbl  %>% 
 	filter(nombre != "sin_datos") %>% # elimina los registros vacios 
 	mutate(
@@ -247,11 +246,14 @@ final_tbl <- final_tbl  %>%
 		 cedula = gsub("\r\n", "", cedula), 
 		 cedula = gsub(" ", "", cedula), 
 		 salario = gsub("\r\n", "", salario), 
+		 salario = stringr::str_replace(salario, " ", ""),
 		 salario = gsub(" ", "", salario), 
 		 salario = gsub(",", "", salario), 
+		 salario =  stringr::str_trim(salario, side = 'both'),
 		 gasto = gsub("\r\n", "", gasto), 
 		 gasto = gsub(" ", "", gasto), 
 		 gasto = gsub(",", "", gasto), 
+		 gasto =  stringr::str_trim(gasto, side = 'both'),
 		
 		 cargo = gsub("\r\n", "", cargo), 
 		 cargo = stringr::str_trim(cargo, side = "right"),
@@ -264,16 +266,23 @@ final_tbl <- final_tbl  %>%
 				
 		 salario = as.numeric(salario),
 		 gasto = as.numeric(gasto),
-		 total = salario + gasto
+		 total = salario + gasto,
+		 status = NULL 
 		)	
 
 final_tbl$last_update <- last_update
 final_tbl$record_date <- 	Sys.time()
 nrow(final_tbl)
 
+final_tbl %>% 
+	DataExplorer::plot_missing()
+
+final_tbl %>% 
+	glimpse()
+
 # ********************************************************************
 # performs sex estimation by name ----
-names_tbl <- readr::read_csv("./00_Data/in/names/namesComplete2016.csv")
+names_tbl <- readr::read_csv("./00_data/in/names/namesComplete2016.csv")
 names_tbl$X1 <- NULL  
 names_tbl <- names_tbl %>% 
 	group_by(firstname, sex) %>% 

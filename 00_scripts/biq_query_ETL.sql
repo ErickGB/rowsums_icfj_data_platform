@@ -380,6 +380,34 @@ INNER JOIN rowsums.journalists.d_date_upload u ON f.record_id = u.record_id
 INNER JOIN rowsums.journalists.d_entity e ON f.entity_id = e.entity_id
 
 
+-- ******************************************
+-- insert trade
+
+insert into trade.fact_import
+ select GENERATE_UUID(), ca.category_id, co.country_id, 
+ cast(concat(substr(cast(im.date as string), 1, 4), substr(cast(im.date as string), 6, 2), substr(cast(im.date as string), 9, 2)) as INT64), 
+ link, date, RUC, company, country_origin_code, 
+ description, key, original_text, quantity_text, 
+ tariff_fraction, import_taxes, oil_protection_taxes, isc_taxes, itbms_taxes, 
+ gross_weight_text, net_weight_text, port, total_to_pay, cif, freight_value, insurance, fob, quantity, gross_weight, net_weight,
+ day, month, cast(extract(year from im.date) as int64), country_data, year_month_date, 
+  cast(concat(substr(cast(im.date as string), 1, 8),'01') as date), 2
+   from data_test.staging_imports im 
+   inner join trade.dim_category ca on ca.sub_category_code = substr(tariff_fraction, 1, 2)
+   inner join trade.dim_country co on co.alpha_2 = country_origin_code 
+   where input_date > cast('2019-12-01' as date) 
+
+
+insert into trade.fact_agg_product
+select co. alpha_2 , co.name, region, sub_region, latitude, longitude, company, RUC, category_code, 
+sub_category_code, category, sub_category, count(*), sum(total_to_pay), sum(cif), sum(freight_value), sum(insurance), 
+sum(fob), sum(quantity), sum(gross_weight), sum(net_weight), 0, 0, month, year, year_month_date, year_date
+from trade.fact_import fi
+inner join trade.dim_category ca on  fi.category_id = ca.category_id
+inner join trade.dim_country co on  fi.country_id = co.country_id
+where record_id = 2 
+group by co. alpha_2 , co.name, region, sub_region, latitude, longitude, company, RUC, category_code, 
+sub_category_code, category, sub_category,month, year, year_month_date, year_date 
 
 
 
