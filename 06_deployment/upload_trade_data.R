@@ -184,6 +184,15 @@ system.time(
 data_tbl %>% 
 	head()
 
+data_test <-  readr::read_csv(paste0(PATH_OUT, "out_imports_2019-10-31.csv"))
+data_test %>% 
+	glimpse()
+error_tbl <- data_test[, c("text_original", "valor_del_flete")]
+error_tbl
+
+data_test %>% 
+	DataExplorer::plot_missing()
+
 bq_deauth()
 
 
@@ -199,6 +208,19 @@ bq_deauth()
 # git config --global user.email "gordon.erick@gmail.com"
 # git config --global user.name "ErickGB"
 
+insert into trade.fact_import
+select GENERATE_UUID(), ca.category_id, co.country_id, 
+cast(concat(substr(cast(im.date as string), 1, 4), substr(cast(im.date as string), 6, 2), substr(cast(im.date as string), 9, 2)) as INT64), 
+link, date, RUC, company, country_origin_code, 
+description, key, original_text, quantity_text, 
+tariff_fraction, import_taxes, oil_protection_taxes, isc_taxes, itbms_taxes, 
+gross_weight_text, net_weight_text, port, total_to_pay, cif, freight_value, insurance, fob, quantity, gross_weight, net_weight,
+day, month, cast(extract(year from im.date) as int64), country_data, year_month_date, 
+cast(concat(substr(cast(im.date as string), 1, 8),'01') as date), 2
+from data_test.staging_imports im 
+inner join trade.dim_category ca on ca.sub_category_code = substr(tariff_fraction, 1, 2)
+inner join trade.dim_country co on co.alpha_2 = country_origin_code 
+where input_date > cast('2019-12-01' as date) 
 
 
 
