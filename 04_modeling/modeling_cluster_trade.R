@@ -55,6 +55,15 @@ bigrquery::dbListTables(bq_conn) # List all the tables in BigQuery data set
 data_raw_tbl <- dplyr::tbl(bq_conn, "fact_agg_product") # connects to a table but no load data in memory
 class(data_raw_tbl)
 
+<<<<<<< HEAD
+=======
+#data_raw_tbl <- data_raw_tbl %>% 
+#	group_by() %>% 
+#	summarize()
+
+
+data_raw_tbl <- collect(data_raw_tbl)
+>>>>>>> 732913a5d6ca1ede5eed0d9d1c9bff4b66bd0148
 data_raw_tbl %>% 
 	glimpse()
 
@@ -95,10 +104,55 @@ company_tbl <- company_tbl %>%
 company_tbl %>% 
 	glimpse()
 
+<<<<<<< HEAD
 # data scale
 company_tbl[is.na(company_tbl)] <- 0
 ncol <- ncol(company_tbl)
 train_prepared_tbl <- as_tibble(scale(company_tbl[, 2:ncol]))
+=======
+
+
+# variable skewness
+skewness_names <- data_raw_tbl %>% 
+	select_if(is.numeric) %>% 
+	map_df(skewness) %>% 
+	gather(factor_key = 1) %>% 
+	arrange(desc(value)) %>% 
+	filter(value >= 0.75) %>% 
+	pull(key) %>% as.character()
+skewness_names
+
+# variable null 
+withnull_names <- data_raw_tbl %>% 
+	map_df(is.na) %>% 
+	gather(factor_key = TRUE) %>% 
+	filter(value == TRUE) %>% 
+	distinct(key) %>% 
+	pull(key) %>% 
+	as.character()
+
+
+
+
+
+
+
+
+rec_obj <- recipe(~ ., data = train_tbl[, 2:ncol]) %>%
+		#step_YeoJohnson(skewness_names) %>% 
+	  #step_meanimpute(withnull_names) %>% 
+		#step_rm(remove_col) %>% 
+	  step_center(all_numeric()) %>%  
+	  step_scale(all_numeric()) %>% 
+	  step_zv(all_predictors()) %>% 
+	  #step_dummy("years") %>%
+    prep()
+rec_obj
+
+train_prepared_tbl <- bake(rec_obj, train_tbl[, 2:ncol]) 
+train_prepared_tbl %>% head()
+
+>>>>>>> 732913a5d6ca1ede5eed0d9d1c9bff4b66bd0148
 
 # anomaly detection with Isolation Forest
 outliers <- get_outliers(train_prepared_tbl)
@@ -205,18 +259,4 @@ total_tbl <- total_tbl %>%
 	select(company, outlier, cluster)
 
 write.csv(total_tbl, paste0(PATH_OUT, "cluster_tbl.csv"))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
