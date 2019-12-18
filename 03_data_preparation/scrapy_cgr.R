@@ -371,6 +371,17 @@ table(master_tbl$update_date)
 #master_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_", actual_month,".csv"))
 master_tbl %>% 
 	glimpse()
+
+master_tbl %>% 
+	distinct(entity)
+
+entities_tbl <- master_tbl %>% 
+	group_by(entity) %>% 
+	summarize(count = n()) %>% 
+	arrange(desc(count))
+
+View(entities_tbl)
+url
 # ********************************************************************
 # upload file to storage
 
