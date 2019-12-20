@@ -620,10 +620,15 @@ analytics_url("https://goo.gl/2FcFVQbk")
 
 
 
-# css: http://www.css.gob.pa/p/grid_defensoria/
+# css 63M: http://www.css.gob.pa/p/grid_defensoria/
+# up (15nal) 14M: http://consulta.up.ac.pa/PortalUp/planilla.aspx
+# metro: https://www.elmetrodepanama.com/transparencia-3/planilla-de-funcionarios/
+# antai: http://www.antai.gob.pa/11489-2/
+
+
 # canal de panama: http://www.defensoriadelpueblo.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=26
-# https://apps.pancanal.com/pls/defensoria/def2.p_inicio
-# up: http://consulta.up.ac.pa/PortalUp/planilla.aspx
+# canal de panama: https://apps.pancanal.com/pls/defensoria/def2.inicio
+
 # utp: http://www.utp.ac.pa/planilla-de-la-utp
 
 # unachi excel: http://www.unachi.ac.pa/transparencia

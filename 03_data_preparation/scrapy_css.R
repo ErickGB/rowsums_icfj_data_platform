@@ -193,7 +193,9 @@ error_tbl
 # clean data
 final_expanded_tbl <- final_expanded_tbl %>% 
 	mutate(
+		person_id = str_replace(str_trim(person_id), '"', ""),
 		complete_name = str_replace(str_trim(complete_name), '"', ""),
+		#first_name = str_split(complete_name, " "),
 		job_title = str_replace(str_trim(job_title), '"', ""),
 		departament = str_replace(str_trim(departament), '"', ""),
 		status = str_replace(str_trim(status), '"', ""),
@@ -213,10 +215,26 @@ final_expanded_tbl <- final_expanded_tbl %>%
 		over_costs = as.numeric(over_costs), 
 		total = as.numeric(total), 
 	)
+# write data processing
+write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_processing.csv"))
+
+warnings() 
+# ***********************************************
+# data review
+# ***********************************************
 
 sum(final_expanded_tbl$over_costs) # 5,451,908
 sum(final_expanded_tbl$total) # 63,300,141
 
 (sum(final_expanded_tbl$over_costs) / sum(final_expanded_tbl$total)) * 100
 
+median(final_expanded_tbl$total) 
+max(final_expanded_tbl$total) 
 
+final_expanded_tbl %>% 
+	group_by(person_id) %>% 
+	summarize(count = n(), total = sum(total)) %>% 
+	ungroup() %>% 
+	filter(count > 1)
+
+summary(final_expanded_tbl$total)
