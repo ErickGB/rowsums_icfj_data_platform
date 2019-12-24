@@ -415,3 +415,38 @@ sub_category_code, category, sub_category,month, year, year_month_date, year_dat
 
 
 
+
+/*
+select * from journalists.view_jobs_summary limit 10
+
+ 
+ select entity_name, date_processed as data_date, sum(count) count, round(sum(sum_total), 2) as total
+  from journalists.view_jobs_summary 
+ group by entity_name,date_processed 
+ order by date_processed desc
+
+select entity_name, job_position, job_title, date_processed as data_date, sum(count) count, round(sum(sum_total), 2) as total
+  from journalists.view_jobs_summary 
+ where entity_name in ('Asamblea Legislativa', 'Presidencia de la República')
+ group by entity_name, job_position, job_title, date_processed 
+ 
+ 
+ select entity_name, person_id, first_name, last_name, job_position, job_title, salary, expenses, overtime, total, status, start_date, date_processed
+  from journalists.f_employee_salary 
+ where record_id = 9 
+   and entity_id = 8 
+ */
+
+
+select entity_name, person_id, first_name, last_name, job_position, job_title, salary, expenses, overtime, total, status, start_date, date_processed
+  from journalists.f_employee_salary 
+ where record_id = 9 
+   and entity_id = 8 
+   and job_title = 'AYUDANTE_GENERAL'
+   
+   
+
+
+
+
+
