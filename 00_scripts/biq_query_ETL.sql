@@ -407,8 +407,10 @@ insert into trade.fact_import
 
 insert into trade.fact_agg_product
 select co. alpha_2 , co.name, region, sub_region, latitude, longitude, company, RUC, category_code, 
-sub_category_code, category, sub_category, count(*), sum(total_to_pay), sum(cif), sum(freight_value), sum(insurance), 
-sum(fob), sum(quantity), sum(gross_weight), sum(net_weight), 0, 0, month, year, year_month_date, year_date
+sub_category_code, category, sub_category, port, 
+count(*), sum(total_to_pay), sum(cif), sum(freight_value), sum(insurance), 
+sum(fob), sum(quantity), sum(gross_weight), sum(net_weight), 0, 0, 
+month, year, year_month_date, year_date
 from trade.fact_import fi
 inner join trade.dim_category ca on  fi.category_id = ca.category_id
 inner join trade.dim_country co on  fi.country_id = co.country_id
@@ -417,6 +419,42 @@ group by co. alpha_2 , co.name, region, sub_region, latitude, longitude, company
 sub_category_code, category, sub_category,month, year, year_month_date, year_date 
 
 
+
+
+
+
+-- ******************************************
+-- consultas doble salario
+
+/*
+select * from journalists.view_jobs_summary limit 10
+
+ 
+ select entity_name, date_processed as data_date, sum(count) count, round(sum(sum_total), 2) as total
+  from journalists.view_jobs_summary 
+ group by entity_name,date_processed 
+ order by date_processed desc
+
+select entity_name, job_position, job_title, date_processed as data_date, sum(count) count, round(sum(sum_total), 2) as total
+  from journalists.view_jobs_summary 
+ where entity_name in ('Asamblea Legislativa', 'Presidencia de la República')
+ group by entity_name, job_position, job_title, date_processed 
+ 
+ 
+ select entity_name, person_id, first_name, last_name, job_position, job_title, salary, expenses, overtime, total, status, start_date, date_processed
+  from journalists.f_employee_salary 
+ where record_id = 9 
+   and entity_id = 8 
+ */
+
+
+select entity_name, person_id, first_name, last_name, job_position, job_title, salary, expenses, overtime, total, status, start_date, date_processed
+  from journalists.f_employee_salary 
+ where record_id = 9 
+   and entity_id = 8 
+   and job_title = 'AYUDANTE_GENERAL'
+   
+   
 
 
 

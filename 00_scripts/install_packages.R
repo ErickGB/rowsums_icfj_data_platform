@@ -65,6 +65,11 @@ install.packages("tidytransit") # Google GTFS (paradas)
 install.packages("FactoMineR") # correspondence analysis an CP analysis
 install.packages("ade4") # dudi.coa
 install.packages("factoextra")
+install.packages("h2o")
+
+# string
+install.packages("stringdist")
+# stringdist("abc","abcd", method = "lv")
 
 # The following two commands remove any previously installed H2O packages for R.
 if ("package:h2o" %in% search()) { detach("package:h2o", unload=TRUE) }
@@ -108,5 +113,17 @@ options("esquisse.display.mode" = "browser")
 library(esquisse)
 esquisser()
 
+#-- install docker 
+#sudo apt install docker.io
 
+#-- Pull the image:
+#  sudo docker pull scrapinghub/splash
+
+#-- Start the container:
+#  sudo docker run -it -p 8050:8050 --rm scrapinghub/splash
+
+# install libraries in R
+devtools::install_github("wch/harbor")
+devtools::install_github("hrbrmstr/splashr") 
+install.packages("magick")
 

@@ -14,12 +14,18 @@ library(DataExplorer)
 
 # ***********************************************
 PATH_OUT <- "./00_data/out/imports/"
-date_start <- "2019-11-01"
-date_end <- "2019-11-30"
-record_type <- "I" # E = exports, I = Imports
+date_start <- "2019-12-01"
+date_end <- "2019-12-31"
+record_type <- "I" # I = Imports, E = exports 
 page_record <- ifelse(record_type == "I", 50000, 1000)
 date_time <- as.character(Sys.Date())
 source("./00_scripts/aduanas_records.R")
+
+#Mesa de Ayuda Procesos
+#Teléfonos: 504 - 2723 / 4224 / 4253
+#Email: soporte.siga@ana.gob.pa / grupo_procesos@ana.gob.pa
+#Mesa de Ayuda SIGA
+#Teléfono: 506 - 6200
 
 
 # exportación: http://190.34.178.196/aduana/SIGA_SICE/index.php?calendario_desde=2019-01-01&calendario_hasta=2019-05-16&ruc=&importador=&tipo_oper=E&puerto=&arancel=&mercancia=&cantresxpag=99&pag=formprin&Accion_Consultar=Consultar
