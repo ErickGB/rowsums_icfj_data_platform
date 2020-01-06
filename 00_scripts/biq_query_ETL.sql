@@ -400,8 +400,10 @@ insert into trade.fact_import
 
 insert into trade.fact_agg_product
 select co. alpha_2 , co.name, region, sub_region, latitude, longitude, company, RUC, category_code, 
-sub_category_code, category, sub_category, count(*), sum(total_to_pay), sum(cif), sum(freight_value), sum(insurance), 
-sum(fob), sum(quantity), sum(gross_weight), sum(net_weight), 0, 0, month, year, year_month_date, year_date
+sub_category_code, category, sub_category, port, 
+count(*), sum(total_to_pay), sum(cif), sum(freight_value), sum(insurance), 
+sum(fob), sum(quantity), sum(gross_weight), sum(net_weight), 0, 0, 
+month, year, year_month_date, year_date
 from trade.fact_import fi
 inner join trade.dim_category ca on  fi.category_id = ca.category_id
 inner join trade.dim_country co on  fi.country_id = co.country_id
@@ -414,7 +416,8 @@ sub_category_code, category, sub_category,month, year, year_month_date, year_dat
 
 
 
-
+-- ******************************************
+-- consultas doble salario
 
 /*
 select * from journalists.view_jobs_summary limit 10

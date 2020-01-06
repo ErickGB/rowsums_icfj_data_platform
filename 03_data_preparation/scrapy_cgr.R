@@ -181,7 +181,7 @@ get_employees <- function(codigo, estado) {
 	
 	#final_tbl$last_update = update
 	return (final_tbl)
-}
+}rstudio6
 
 
 # ***********************************************

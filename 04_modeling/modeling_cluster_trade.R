@@ -35,7 +35,6 @@ actual_month <- "sep" #
 source("./00_scripts/base_functions.R")
 # *******************************************************************************
 # load data ----
-# gcp authentication
 httr::set_config(httr::config(http_version = 0))
 # autentication - only one time
 bq_auth(path = "./00_scripts/rowsums-2198b8679813.json", 
@@ -43,29 +42,27 @@ bq_auth(path = "./00_scripts/rowsums-2198b8679813.json",
 				cache = gargle::gargle_oauth_cache(),
 				use_oob = gargle::gargle_oob_default())
 
-projectid<-'rowsums'
-datasetid<-'trade'
-bq_conn <-  dbConnect(bigquery(), 
-                            project = projectid,
-                            dataset = datasetid, 
-                            use_legacy_sql = FALSE
-                      )
+bigquery_conn <- bigrquery::src_bigquery(project = "rowsums", dataset = "trade")
+# List table names
+src_tbls(bigquery_conn)
 
-bigrquery::dbListTables(bq_conn) # List all the tables in BigQuery data set
-data_raw_tbl <- dplyr::tbl(bq_conn, "fact_agg_product") # connects to a table but no load data in memory
-class(data_raw_tbl)
+categories_tbl <- tbl(bigquery_conn, "trade.dim_category")
+categories_tbl <- collect(categories_tbl)
 
-<<<<<<< HEAD
-=======
-#data_raw_tbl <- data_raw_tbl %>% 
-#	group_by() %>% 
-#	summarize()
+imports_tbl <- tbl(bigquery_conn, "trade.fact_import")
+imports_tbl %>% 
+	glimpse()
 
+total_ref <- imports_tbl %>% 
+	filter(year == 2019L)
+show_query(total_ref)
 
-data_raw_tbl <- collect(data_raw_tbl)
->>>>>>> 732913a5d6ca1ede5eed0d9d1c9bff4b66bd0148
+data_raw_tbl <- collect(total_ref)
 data_raw_tbl %>% 
 	glimpse()
+
+
+
 
 # by subcategories
 sub_category_tbl <- data_raw_tbl %>% 

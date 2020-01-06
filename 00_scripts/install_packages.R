@@ -67,6 +67,10 @@ install.packages("ade4") # dudi.coa
 install.packages("factoextra")
 install.packages("h2o")
 
+# string
+install.packages("stringdist")
+# stringdist("abc","abcd", method = "lv")
+
 # The following two commands remove any previously installed H2O packages for R.
 if ("package:h2o" %in% search()) { detach("package:h2o", unload=TRUE) }
 if ("h2o" %in% rownames(installed.packages())) { remove.packages("h2o") }

@@ -43,8 +43,11 @@ temp <- total_tbl %>%
 	ungroup() %>% 
 	mutate(percent = (cif/sum(cif)) * 100) %>% 
 	mutate(percent_acum = cumsum(percent)) %>% 
+	mutate(secuence_id = as.numeric(rownames(.))) %>% 
 	head(2200)
-
+temp %>% filter(secuence_id > 40 & secuence_id <= 60) %>% select(-secuence_id)
+temp %>% filter(secuence_id %in% c(340, 341, 512, 513, 873, 912, 914, 945))
+View(temp)
 
 top_200_companies_tbl <- total_tbl %>% 
 	group_by(company) %>% 
