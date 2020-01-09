@@ -238,3 +238,34 @@ final_expanded_tbl %>%
 	filter(count > 1)
 
 summary(final_expanded_tbl$total)
+
+# repetidos 
+person_id_list <- master_tbl %>% 
+	filter(code %in% c("900", "012")) %>% 
+	group_by(person_id) %>% 
+	summarize(count = n(), amount = sum(total_income)) %>% 
+	ungroup() %>% 
+	filter(count > 1) %>% 
+	arrange(desc(amount)) %>% 
+	select(person_id) %>% 
+	pull() %>% 
+	as.character()
+NROW(person_id_list) # 391 profesionales de la salud con puestos en dos entidades
+
+master_tbl %>% 
+	filter(person_id %in% c(person_id_list)) %>% 
+	select(first_name, last_name, person_id, entity, total_income, position, status, start_date) %>% 
+	arrange(person_id, total_income)
+
+master_tbl %>% 
+	filter(code %in% c("900", "012")) %>% 
+	group_by(person_id) %>% 
+	summarize(count = n(), amount = sum(total_income)) %>% 
+	ungroup() %>% 
+	filter(count > 1) %>% 
+	arrange(desc(amount))
+
+master_tbl %>% 
+	filter(person_id == '8-0200-02135') %>%  # RUSBEL     BATISTA   9-0098-00959 DIRECTOR_NACIONAL... 5k + 7495 = 12k
+	select(first_name, last_name, person_id, position, total_income, status, start_date, entity)
+rm(person_id_list)

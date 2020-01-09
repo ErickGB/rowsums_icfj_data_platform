@@ -15,11 +15,24 @@ library(bigrquery)
 # *******************************************************************************
 PATH_OUT <- "./00_data/out/salaries/"    
 date_time <- as.character(Sys.Date())    
-actual_month <- "nov"                    # 
-last_update <- as.Date('2019-11-01')     #
+actual_month <- "dic"                    # 
+last_update <- as.Date('2019-12-01')     #
 requiere_joins_files <- TRUE             # requiere row bindws with other extraccion
 # *******************************************************************************
+# Load supplementary data ----
+names_tbl <- readr::read_csv("./00_data/in/names/namesComplete2016.csv")
+names_tbl$X1 <- NULL  
+names_tbl <- names_tbl %>% 
+	group_by(firstname, sex) %>% 
+	summarize(total = sum(count)) %>%
+	ungroup() %>% 
+	mutate(
+		firstname = toupper(firstname), 
+		sex = ifelse(sex == "F", "MUJER", "HOMBRE")
+	)
+# *******************************************************************************
 # functions ----
+# format key get_people_id("8-707-2100")
 get_people_id <- function(key) {
 	key_02 <- str_split(key, pattern = "-")[[1]][2]
 	key_03 <- str_split(key, pattern = "-")[[1]][3]
@@ -30,16 +43,13 @@ get_people_id <- function(key) {
 											paste0(substr("00000", 1, 5 - nchar(key_03)), key_03))
 	return(people_id)		
 }
-
-is.na(str_split("ABC", pattern = " ")[[1]][2])
-
+# split txt data
 get_split_value <- function (value, position) {
 	split_value <- str_split(value, pattern = " ")[[1]][position]
 	split_value <- ifelse(is.na(split_value) == TRUE, "", as.character(split_value))
-	
 	return(split_value)
 }
-
+# realiza web scraping 
 get_employees <- function(codigo, estado) {
 	print(paste0("codigo: ", codigo, " status:", estado))
   #<form> 'f_institucion' (POST Index_planillagub3.asp)
@@ -181,8 +191,20 @@ get_employees <- function(codigo, estado) {
 	
 	#final_tbl$last_update = update
 	return (final_tbl)
-}rstudio6
-
+}
+# get sex by name
+get_sex_by_name <- function(name) 
+{
+	sex <- names_tbl %>% 
+		filter(firstname == toupper(name)) %>% 
+		arrange(desc(total)) %>% 
+		dplyr::select(sex) %>% 
+		head(1) %>% 
+		as.character()
+	
+	sex <- ifelse(nchar(sex) > 6, "X", sex)
+	return (sex)
+}
 
 # ***********************************************
 # load data ----
@@ -190,8 +212,6 @@ get_employees <- function(codigo, estado) {
 # ***********************************************
 
 url <- 'http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp'
-#xopen(url)
-
 html <- read_html(url)
 #pgform #pgform$fields
 
@@ -239,9 +259,10 @@ update <-stringr::str_trim(update, side = "right")
 update <-stringr::str_trim(update, side = "left")
 
 # ********************************************************************
-# PROCESSED IN PARALLEL with furrr (5 minutes) ----
+# PROCESSED IN PARALLEL with furrr  ----
 #get_employees('007', '1')
 
+time_1 <- system.time()
 plan("multiprocess")
 codes <- c('007', '018', '012', '000', '045')
 codes <- c('000')
@@ -254,8 +275,12 @@ final_tbl <- employee_salaries_tbl %>%
 
 final_tbl %>% 
 	glimpse()
+system.time() - time_1 
+
+# end scrapy 
 
 
+# load and format external data
 if(requiere_joins_files) {
 	# meduca 
 	meduca_tbl <- readr::read_csv(paste0(PATH_OUT, "meduca_nov.csv"))
@@ -340,13 +365,19 @@ if(requiere_joins_files) {
 	final_tbl <- rbind(final_tbl, css_tbl)
 }
 
+
+
+
 final_tbl %>% 
 	glimpse()
 
 final_tbl %>% 
 	DataExplorer::plot_missing()
 
-# data wrangling.. data cleaning.
+
+
+# ***********************************************************************
+# data wrangling.. data cleaning for All data
 # A tibble: 195,411 x 14
 final_tbl <- final_tbl  %>% 
 	filter(nombre != "sin_datos") %>% # elimina los registros vacios 
@@ -390,7 +421,6 @@ final_tbl <- final_tbl  %>%
 		 fecha_inicio = gsub("\r\n", "", fecha_inicio), 
 		 fecha_inicio = gsub(" ", "", fecha_inicio), 
 		 fecha_inicio = substr(fecha_inicio, 1, 10),
-		 
 				
 		 salario = as.numeric(salario),
 		 gasto = as.numeric(gasto),
@@ -410,30 +440,6 @@ final_tbl %>%
 
 # ********************************************************************
 # performs sex estimation by name ----
-names_tbl <- readr::read_csv("./00_data/in/names/namesComplete2016.csv")
-names_tbl$X1 <- NULL  
-names_tbl <- names_tbl %>% 
-	group_by(firstname, sex) %>% 
-	summarize(total = sum(count)) %>%
-	ungroup() %>% 
-	mutate(
-			firstname = toupper(firstname), 
-			sex = ifelse(sex == "F", "MUJER", "HOMBRE")
-	)
-	
-get_sex_by_name <- function(name) 
-{
-	sex <- names_tbl %>% 
-		filter(firstname == toupper(name)) %>% 
-		arrange(desc(total)) %>% 
-		dplyr::select(sex) %>% 
-		head(1) %>% 
-		as.character()
-	
-	sex <- ifelse(nchar(sex) > 6, "X", sex)
-	return (sex)
-}
-
 final_tbl <- final_tbl %>% 
 	mutate(
 		sex = sapply(primer_nombre, function(x) get_sex_by_name(x))
@@ -572,38 +578,7 @@ entities_tbl <- master_tbl %>%
 	group_by(code, entity) %>% 
 	summarize(count = n(), amount = sum(total_income)) %>% 
 	arrange(desc(count))
-
 View(entities_tbl)
-
-# repetidos 
-person_id_list <- master_tbl %>% 
-	filter(code %in% c("900", "012")) %>% 
-	group_by(person_id) %>% 
-	summarize(count = n(), amount = sum(total_income)) %>% 
-	ungroup() %>% 
-	filter(count > 1) %>% 
-	arrange(desc(amount)) %>% 
-	select(person_id) %>% 
-	pull() %>% 
-	as.character()
-NROW(person_id_list) # 391 profesionales de la salud con puestos en dos entidades
-
-master_tbl %>% 
-	filter(person_id %in% c(person_id_list)) %>% 
-	select(first_name, last_name, person_id, entity, total_income, position, status, start_date) %>% 
-	arrange(person_id, total_income)
-	
-master_tbl %>% 
-	filter(code %in% c("900", "012")) %>% 
-	group_by(person_id) %>% 
-	summarize(count = n(), amount = sum(total_income)) %>% 
-	ungroup() %>% 
-	filter(count > 1) %>% 
-	arrange(desc(amount))
-
-master_tbl %>% 
-	filter(person_id == '8-0200-02135') %>%  # RUSBEL     BATISTA   9-0098-00959 DIRECTOR_NACIONAL... 5k + 7495 = 12k
-	select(first_name, last_name, person_id, position, total_income, status, start_date, entity)
 
 # ********************************************************************
 # upload file to storage
@@ -614,8 +589,6 @@ master_tbl %>%
 
 # ********************************************************************
 # google bigquery connection ----
-# install.packages("googledrive")
-# install.packages("gargle")
 library(bigrquery)
 library(googledrive)
 library(gargle)
@@ -681,6 +654,9 @@ as_tibble(query_results) %>%
 	arrange(desc(total))
 write.csv(as_tibble(query_results), paste0(PATH_OUT, "new_jobs", actual_month,".csv"))
 
+
+
+# *****************************
 # JOBS : new jobs? ADD MANUALLY    :(
 sql <- "SELECT position, count(*) as total, avg(salary) salary 
 FROM data_test.staging_central_gov_salaries where code = '900' and position not in (
@@ -877,8 +853,11 @@ analytics_url("https://goo.gl/2FcFVQbk")
 
 
 
+# realizados 
+# css 63M / 30K empleados: http://www.css.gob.pa/p/grid_defensoria/
 
-# css 63M: http://www.css.gob.pa/p/grid_defensoria/
+# http://www.utp.ac.pa/historial-de-planilla-de-empleados
+# https://www.ana.gob.pa/other/transp/planilla.php?page=83
 # up (15nal) 14M: http://consulta.up.ac.pa/PortalUp/planilla.aspx
 # metro: https://www.elmetrodepanama.com/transparencia-3/planilla-de-funcionarios/
 # antai: http://www.antai.gob.pa/11489-2/
@@ -886,8 +865,6 @@ analytics_url("https://goo.gl/2FcFVQbk")
 
 # canal de panama: http://www.defensoriadelpueblo.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=26
 # canal de panama: https://apps.pancanal.com/pls/defensoria/def2.inicio
-
-# utp: http://www.utp.ac.pa/planilla-de-la-utp
 
 # unachi excel: http://www.unachi.ac.pa/transparencia
 # ifaruh pdf: https://www.ifarhu.gob.pa/transparencia/11-3-planillas/ 
