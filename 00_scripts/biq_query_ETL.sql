@@ -380,6 +380,13 @@ INNER JOIN rowsums.journalists.d_date_upload u ON f.record_id = u.record_id
 INNER JOIN rowsums.journalists.d_entity e ON f.entity_id = e.entity_id
 
 
+select entity_id, entity_name, s.record_date, u.processed_date,  sum(total) as total
+  from journalists.f_employee_salary s
+  inner join journalists.d_date_upload u on u.record_id = s.record_id
+  where entity_id = 9
+  group by entity_id, record_date, entity_name, u.processed_date
+  order by record_date
+
 -- ******************************************
 -- insert trade
 
