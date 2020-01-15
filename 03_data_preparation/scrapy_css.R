@@ -10,26 +10,16 @@ library(purrr)     # Functional programming
 library(furrr)     # Parallel Processing using purrr (iteration)
 # ***************************************************************************
 url_css <- "http://www.css.gob.pa/p/grid_defensoria/"
+url_last_update <- "http://www.css.gob.pa/transparencia.html"
 PATH_OUT <- "./00_data/out/salaries/"
-date_time <- as.character(Sys.Date())
-actual_month <- "nov" # 
-last_update <- as.Date('2019-12-01')
+date_time <- as.character(Sys.Date()) # process execution day
+last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
-# Table with results 1 to 3443
-final_tbl <- tibble(
-	id = 1:3443,
-	entity = rep("CSS", 1, 3443),
-	site = rep(url_css, 1, 3443)
-)
-
-error_tbl <- tibble(
-	error_id = character(),
-	messages = character()
-)
+process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
+process_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
 # ***********************************************
-# Functions ----
-# ***********************************************
-#get_css_employees(1)
+# functions ----
+source("00_scripts/etl_functions.R")
 #get_css_employees(575)
 get_css_employees <- function(page) {
 	tryCatch({
@@ -148,15 +138,40 @@ get_css_employees <- function(page) {
 	return(page_tbl)
 }
 
-# ***********************************************
+# *******************************************************************************
+
+# Table with results 1 to 3443
+final_tbl <- tibble(
+	id = 1:3455,
+	entity = rep("CSS", 1, 3455),
+	site = rep(url_css, 1, 3455)
+)
+
+error_tbl <- tibble(
+	error_id = character(),
+	messages = character()
+)
 
 # ***********************************************
+# Save images
+
 # Start, active splash ----
 splash("localhost") %>% splash_active()
-render_png(url = url_css, wait = 5)
 
-# *********************
+# 1. capture the last update
+file_name <- paste0("./00_data/images/2020/css/css_last_update_", process_month,".png")
+img_last <- render_png(url = url_last_update, wait = 5)
+image_write(img_last, file_name)
+
+# 1. capture principal page
+file_name <- paste0("./00_data/images/2020/css/css_principal_page_", process_month,".png")
+img_princial <- render_png(url = url_css, wait = 5)
+image_write(img_princial, file_name)
+
+# ***********************************************
 # scraping CSS web page 
+# ***********************************************
+
 body_html <- splash_local %>% 
 	splash_go(url_css) %>% 
 	splash_wait(5) %>% 
@@ -167,7 +182,7 @@ final_tbl <- final_tbl %>%
 	mutate(
 		records = furrr::future_map(id, get_css_employees) 
 	) # %>% unnest()
-Sys.time() - time
+Sys.time() - time # Time difference of 6.748743 hours
 
 final_expanded_tbl <- final_tbl %>% 
 	unnest()
@@ -215,57 +230,156 @@ final_expanded_tbl <- final_expanded_tbl %>%
 		over_costs = as.numeric(over_costs), 
 		total = as.numeric(total), 
 	)
-# write data processing
-write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_processing.csv"))
 
-warnings() 
-# ***********************************************
-# data review
-# ***********************************************
+# correct names
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == 'CONDUCTOR_DE VEHICULO I', 
+												'CONDUCTOR_DE VEHICULO   I', job_title))
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == 'CONDUCTOR_DE VEHICULO II', 
+												'CONDUCTOR_DE VEHICULO  II', job_title))
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == "TECNOLOGO_EN RADIOLOG E IMÃÂGENES I II", 
+												"TECNOLOGO_EN RADIOLOG E IMAGENES I II", job_title))
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == "CORREDOR_DE PRIMA DE ANTIGÃÂEDAD", 
+												"CORREDOR_DE PRIMA DE ANTIGUEDAD", job_title))
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == "ALBAÃÂIL_JEFE", 
+												"ALBANIL_JEFE", job_title))
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == "ALBAÃÂIL", 
+												"ALBANIL", job_title))
+# final processing
+final_expanded_tbl %>%
+	glimpse()
 
+# review
 sum(final_expanded_tbl$over_costs) # 5,451,908
 sum(final_expanded_tbl$total) # 63,300,141
 
-(sum(final_expanded_tbl$over_costs) / sum(final_expanded_tbl$total)) * 100
+# write data processing
+write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_processing_dic.csv"))
 
-median(final_expanded_tbl$total) 
-max(final_expanded_tbl$total) 
 
-final_expanded_tbl %>% 
-	group_by(person_id) %>% 
-	summarize(count = n(), total = sum(total)) %>% 
-	ungroup() %>% 
-	filter(count > 1)
+# **************************
+# start new data structure
+employee_css_tbl <- final_expanded_tbl %>% 
+	mutate(
+		person_id = map_chr(person_id, get_people_id), # standarize "cedula"
+		codigo = "900",
+		entidad = "Caja de Seguro Social",
+		nombre =  map2_chr(complete_name, 1, get_split_value), # str_split(complete_name, pattern = " ")[[1]][1],
+		apellido = map2_chr(complete_name, 2, get_split_value), # str_split(complete_name, pattern = " ")[[1]][2],
+		entity = as.character(entity),
+		salary = as.character(salary),
+		expens = as.character(expens),
+		over_costs = as.character(over_costs), 
+		total = as.character(total),
+		start_date = as.character(start_date)
+	) %>% 
+	rename(
+		url = site, 
+		cedula = person_id,
+		cargo = job_title, 
+		salario = salary, 
+		gasto = expens, 
+		fecha_inicio = start_date,
+		estado = status
+	) %>% 
+	mutate(status = "-1") %>% 
+	select(codigo, entidad, url, status, nombre, apellido, cedula, cargo, salario, gasto, estado, fecha_inicio, departament, over_costs)
 
-summary(final_expanded_tbl$total)
+employee_css_tbl <- employee_css_tbl  %>% 
+	filter(nombre != "sin_datos") %>% # elimina los registros vacios 
+	mutate(
+		departament = gsub("\r\n", "", departament),
+		over_costs = gsub("\r\n", "", over_costs),
+		departament = stringr::str_trim(departament, side = "both"),
+		over_costs = stringr::str_trim(over_costs, side = "both"), 
+		over_costs = gsub(",", "", over_costs)
+	) %>% 
+	mutate(
+		last_update = last_update,
+		nombre = gsub("\r\n", "", nombre),
+		nombre = gsub("\"", "", nombre),
+		primer_nombre = sapply(nombre, function(x) substr(x, 1, gregexpr(pattern =" ", x)[[1]][1] - 1)),
+		primer_nombre = ifelse(primer_nombre == "", nombre, primer_nombre),
+		primer_nombre = stringr::str_trim(primer_nombre, side = "right"),
+		primer_nombre = stringr::str_trim(primer_nombre, side = "left"),		
+		nombre = stringr::str_trim(nombre, side = "right"),
+		nombre = stringr::str_trim(nombre, side = "left"),
+		apellido = gsub("\r\n", "", apellido),
+		apellido = gsub(" ", "", apellido),
+		cedula = gsub("\r\n", "", cedula), 
+		cedula = gsub(" ", "", cedula), 
+		salario = gsub("\r\n", "", salario), 
+		salario = stringr::str_replace(salario, " ", ""),
+		salario = gsub(" ", "", salario), 
+		salario = gsub(",", "", salario), 
+		salario =  stringr::str_trim(salario, side = 'both'),
+		gasto = gsub("\r\n", "", gasto), 
+		gasto = gsub(" ", "", gasto), 
+		gasto = gsub(",", "", gasto), 
+		gasto =  stringr::str_trim(gasto, side = 'both'),
+		
+		cargo = gsub("\r\n", "", cargo), 
+		cargo = stringr::str_trim(cargo, side = "right"),
+		cargo = stringr::str_trim(cargo, side = "left"),
+		estado = gsub("\r\n", "", estado), 
+		estado = gsub(" ", "", estado), 
+		fecha_inicio = str_trim(fecha_inicio, side = "both"),
+		fecha_inicio = gsub("\r\n", "", fecha_inicio), 
+		fecha_inicio = gsub(" ", "", fecha_inicio), 
+		fecha_inicio = substr(fecha_inicio, 1, 10),
+		
+		salario = as.numeric(salario),
+		gasto = as.numeric(gasto),
+		over_costs = as.numeric(over_costs),
+		total = salario + gasto + over_costs,
+		record_date = process_date,
+		#key = paste(cedula, as.character(fecha_inicio), cargo, sep = "_")
+		status = NULL ,
+	)	
 
-# repetidos 
-person_id_list <- master_tbl %>% 
-	filter(code %in% c("900", "012")) %>% 
-	group_by(person_id) %>% 
-	summarize(count = n(), amount = sum(total_income)) %>% 
-	ungroup() %>% 
-	filter(count > 1) %>% 
-	arrange(desc(amount)) %>% 
-	select(person_id) %>% 
-	pull() %>% 
-	as.character()
-NROW(person_id_list) # 391 profesionales de la salud con puestos en dos entidades
+# ********************************************************************
+# performs sex estimation by name ----
+employee_css_tbl <- employee_css_tbl %>% 
+	mutate(
+		sex = sapply(primer_nombre, function(x) get_sex_by_name(x))
+	)
 
-master_tbl %>% 
-	filter(person_id %in% c(person_id_list)) %>% 
-	select(first_name, last_name, person_id, entity, total_income, position, status, start_date) %>% 
-	arrange(person_id, total_income)
+employee_css_tbl %>% 
+	glimpse()
 
-master_tbl %>% 
-	filter(code %in% c("900", "012")) %>% 
-	group_by(person_id) %>% 
-	summarize(count = n(), amount = sum(total_income)) %>% 
-	ungroup() %>% 
-	filter(count > 1) %>% 
-	arrange(desc(amount))
+# write data processing
+write.csv(employee_css_tbl, paste0(PATH_OUT, "css_employees_processing_", process_month,".csv"))
 
-master_tbl %>% 
-	filter(person_id == '8-0200-02135') %>%  # RUSBEL     BATISTA   9-0098-00959 DIRECTOR_NACIONAL... 5k + 7495 = 12k
-	select(first_name, last_name, person_id, position, total_income, status, start_date, entity)
-rm(person_id_list)
+# ********************************************************************
+# create data for Tableau month dashboard : central_gov_salaries ----
+master_css_tbl <- employee_css_tbl %>% 
+	mutate(
+		key = paste(cedula, as.character(fecha_inicio), cargo, sep = "_")
+	) %>% 
+	rename(
+		code = codigo, complete_name = nombre, last_name = apellido, person_id = cedula, 
+		position = cargo, salary = salario, expenses = gasto, total_income = total, status = estado, 
+		start_date = fecha_inicio, first_name = primer_nombre, entity = entidad, update_date = last_update
+	)  %>%	
+	select(code, complete_name, last_name, person_id, position, salary, expenses, total_income, status, 
+				 start_date, first_name, entity, update_date, sex, url, record_date, key, 
+				 over_costs, departament) 
+
+write.csv(master_css_tbl, paste0(PATH_OUT, "central_css_gov_salaries_", actual_month,".csv"), row.names = FALSE) 
+
+rm(body_html, error_tbl, final_tbl)
+warnings() 
+
+# Nota: Validar caso de
+# RUSBEL     BATISTA   9-0098-00959 DIRECTOR_NACIONAL... 5k + 7k = 12k
+# ********************************************************************
+# END 
+# ********************************************************************
+
+
+

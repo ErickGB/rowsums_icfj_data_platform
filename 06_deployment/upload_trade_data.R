@@ -105,10 +105,13 @@ set_process_data <- function(file_name) {
 				filter(day <= 10)
 				
 			second_tbl <- data_tbl %>% 
-				filter(day > 10 & day <= 20)
+				filter(day > 10 & day <= 18)
 			
 			third_tbl <- data_tbl %>% 
-				filter(day > 20)
+				filter(day > 18 & day <= 24)
+			
+			four_tbl <- data_tbl %>% 
+				filter(day > 24)
 			
 			total <- nrow(first_tbl)
 			print(paste0('first uploading data: ', as.character(total), " records"))
@@ -123,6 +126,11 @@ set_process_data <- function(file_name) {
 			total <- nrow(third_tbl)
 			print(paste0('third uploading data: ', as.character(total), " records"))
 			upload_file(third_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
+			print('done!')
+			
+			total <- nrow(four_tbl)
+			print(paste0('four_tbl uploading data: ', as.character(total), " records"))
+			upload_file(four_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
 			print('done!')
 			
 			total_records <- nrow(data_tbl)

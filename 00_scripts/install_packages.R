@@ -3,6 +3,10 @@ install.packages("readr")      # load data
 install.packages('devtools')
 install.packages("DataExplorer")
 install.packages("janitor")
+install.packages("xlsx")
+install.packages("pdftools")
+install.packages("pdftools")
+install.packages("staplr")
 
 # shiny
 install.packages("shiny") 

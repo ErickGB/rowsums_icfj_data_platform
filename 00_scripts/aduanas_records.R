@@ -4,7 +4,7 @@ get_count <- function(x) {
 	text <- ifelse(is.na(text), "-1", text)
 	return(as.integer(text))
 }
-
+#get_all_products('')
 get_all_products <- function(url) {
 	session <- html_session(url)
 	operation_type <- substr(url, 133, 133)

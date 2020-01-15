@@ -60,6 +60,7 @@ records_tbl
 # srapy data (it's slowww, large number of records have been downloaded)
 time <- Sys.time()
 time
+plan("multiprocess")
 	out <- tryCatch(
         {
 records_tbl <- records_tbl %>% 
@@ -91,7 +92,7 @@ table(substr(records_tbl$peso_neto, nchar(records_tbl$peso_neto) - 1, nchar(reco
 write.csv(records_tbl, #fileEncoding = "UTF-8",
 	paste0(PATH_OUT, "out_imports_", date_end,".csv"), row.names = FALSE)
 
-rm(records_tbl, out) # data tables
+rm(records_tbl) # data tables
 rm(get_count, get_all_products) # functions
 rm(count, date_end, date_start, date_time, PATH_OUT, record_text, time, url) # variables
 gc()
