@@ -211,7 +211,13 @@ get_sex_by_name <- function(name)
 # Starting web scraping
 # ***********************************************
 
+# capture the last update
 url <- 'http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp'
+file_name <- paste0("./00_data/images/2020/cgr/cgr_last_update_", actual_month,".png")
+img_last <- render_png(url = url, wait = 5)
+image_write(img_last, file_name)
+
+# start 
 html <- read_html(url)
 #pgform #pgform$fields
 
@@ -272,109 +278,17 @@ employee_salaries_tbl <- entities_tbl %>%
 
 final_tbl <- employee_salaries_tbl %>% 
   unnest()
-
-final_tbl %>% 
-	glimpse()
 system.time() - time_1 
 
 # end scrapy 
-
-
-# load and format external data
-if(requiere_joins_files) {
-	# meduca 
-	meduca_tbl <- readr::read_csv(paste0(PATH_OUT, "meduca_nov.csv"))
-	meduca_tbl[c(20300, 20861, 31126, 38777, 42841), ] 
-	meduca_tbl[c(20300, 20861, 38777), c("GASTOS")] <- 1000
-	meduca_tbl[c(31126), c("GASTOS")] <- 3000
-	meduca_tbl[c(42841), c("GASTOS")] <- 3500
-	meduca_tbl[c(20300, 20861, 31126, 38777, 42841), ] 
-	meduca_tbl[meduca_tbl$CEDULA == "8-0252-00598", c("GASTOS")] <- 3000
-	meduca_tbl[meduca_tbl$CEDULA == "1-0015-00887", c("GASTOS")] <- 1000
-	meduca_tbl[meduca_tbl$CEDULA == "8-0163-01149", c("GASTOS")] <- 1000
-	meduca_tbl[meduca_tbl$CEDULA == "8-0195-00824", c("GASTOS")] <- 3000
-	meduca_tbl[is.na(meduca_tbl$`FECHA DE INICIO`) == TRUE, 8] <- "01/12/2019"
-	
-	meduca_tbl <- meduca_tbl %>% 
-		clean_names()
-	
-	meduca_tbl %>% 
-		glimpse()
-	
-	meduca_tbl <- meduca_tbl %>% 
-		mutate(
-			codigo = "007",
-			entidad = "Ministerio de Educación",
-			url = "http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp",
-			status = "-1", 
-			salario = as.character(salario),
-			gastos = as.character(gastos)
-		) %>% 
-		rename(
-			nombre = nombres, 
-			gasto = gastos, 
-			fecha_inicio = fecha_de_inicio
-		) %>% 
-		select(codigo, entidad, url, status, nombre, apellido, cedula, cargo, salario, gasto, estado, fecha_inicio)
-	
-	final_tbl <- final_tbl %>% 
-		filter(!(codigo == "007")) # borra a meduca 
-	final_tbl <- rbind(final_tbl, meduca_tbl) # agrega meduca 
-	
-	# CSS 
-	css_tbl <- readr::read_csv(paste0(PATH_OUT, "css_employees_processing.csv"))
-	css_tbl <- css_tbl %>% 
-		clean_names()
-	
-	css_tbl <- css_tbl %>% 
-		mutate(
-			x1 = NULL,
-			person_id = map_chr(person_id, get_people_id), # standarize "cedula"
-			codigo = "900",
-			entidad = "Caja de Seguro Social",
-			nombre =  map2_chr(complete_name, 1, get_split_value), # str_split(complete_name, pattern = " ")[[1]][1],
-			apellido = map2_chr(complete_name, 2, get_split_value), # str_split(complete_name, pattern = " ")[[1]][2],
-			entity = as.character(entity),
-			salary = as.character(salary),
-			expens = as.character(expens),
-			over_costs = as.character(over_costs), 
-			total = as.character(total),
-			start_date = as.character(start_date)
-		) %>% 
-		rename(
-			url = site, 
-			cedula = person_id,
-			cargo = job_title, 
-			salario = salary, 
-			gasto = expens, 
-			fecha_inicio = start_date,
-			estado = status
-		) %>% 
-		mutate(status = "-1") %>% 
-		select(codigo, entidad, url, status, nombre, apellido, cedula, cargo, salario, gasto, estado, fecha_inicio, departament, over_costs)
-	
-	css_tbl %>% 
-		glimpse()
-	final_tbl$departament = "unknow"
-	final_tbl$over_costs = "0"
-	
-	# procesar formato de cédula
-	#key <- "10-21-450"
-	#key <- "8-0925-00290"
-	
-	final_tbl <- rbind(final_tbl, css_tbl)
-}
-
-
-
+final_tbl$departament = "unknow"
+final_tbl$over_costs = "0"
 
 final_tbl %>% 
 	glimpse()
 
 final_tbl %>% 
 	DataExplorer::plot_missing()
-
-
 
 # ***********************************************************************
 # data wrangling.. data cleaning for All data
@@ -434,10 +348,6 @@ final_tbl$record_date <- 	Sys.time()
 nrow(final_tbl)
 (nrow(final_tbl)/253000) * 100 
 
-
-final_tbl %>% 
-	glimpse()
-
 # ********************************************************************
 # performs sex estimation by name ----
 final_tbl <- final_tbl %>% 
@@ -445,29 +355,8 @@ final_tbl <- final_tbl %>%
 		sex = sapply(primer_nombre, function(x) get_sex_by_name(x))
 	)
 
-css_tbl <- final_tbl %>% 
-	filter(codigo == "900")
-
-css_tbl <- final_tbl %>% 
-	filter(codigo == "900") %>% 
-	mutate(
-		fecha_inicio = as.Date(fecha_inicio, tryFormat = c("%d/%m/%Y", "%Y-%m-%d")),
-		last_update = as.Date(last_update, tryFormat = c("%d/%m/%Y", "%Y-%m-%d"))
-	) 
-
-final_tbl2 <- final_tbl %>% 
-	filter(codigo != "900") %>% 
-	mutate(
-		fecha_inicio = as.Date(fecha_inicio, tryFormat = c("%d/%m/%Y", "%Y-%m-%d")),
-		last_update = as.Date(last_update, tryFormat = c("%d/%m/%Y", "%Y-%m-%d"))
-		) 
-
-css_tbl %>% 
-	DataExplorer::plot_missing()
-final_tbl2 %>% 
-	DataExplorer::plot_missing()
-
-final_tbl <- rbind(css_tbl, final_tbl2)
+final_tbl %>% 
+	glimpse()
 
 date_time <- as.Date(substr(update, 1, 10), format = "%m/%d/%Y")
 final_tbl <- final_tbl %>%
@@ -511,33 +400,8 @@ final_tbl <- final_tbl %>%
 	mutate(cargo = ifelse(cargo == 'JEFE_DE DISE%O', 
 												'JEFE_DE DISEÑO', cargo))
 
-#CSS
-# CORREDOR_DE PRIMA DE ANTIG√É¬É√Ç¬úEDAD
-final_tbl <- final_tbl %>% 
-	mutate(cargo = ifelse(cargo == 'CONDUCTOR_DE VEHICULO I', 
-												'CONDUCTOR_DE VEHICULO   I', cargo))
-final_tbl <- final_tbl %>% 
-	mutate(cargo = ifelse(cargo == 'CONDUCTOR_DE VEHICULO II', 
-												'CONDUCTOR_DE VEHICULO  II', cargo))
-final_tbl <- final_tbl %>% 
-	mutate(cargo = ifelse(cargo == "TECNOLOGO_EN RADIOLOG E IMÃÂGENES I II", 
-												"TECNOLOGO_EN RADIOLOG E IMAGENES I II", cargo))
-final_tbl <- final_tbl %>% 
-	mutate(cargo = ifelse(cargo == "CORREDOR_DE PRIMA DE ANTIGÃÂEDAD", 
-												"CORREDOR_DE PRIMA DE ANTIGUEDAD", cargo))
-final_tbl <- final_tbl %>% 
-	mutate(cargo = ifelse(cargo == "ALBAÃÂIL_JEFE", 
-												"ALBANIL_JEFE", cargo))
-final_tbl <- final_tbl %>% 
-	mutate(cargo = ifelse(cargo == "ALBAÃÂIL", 
-												"ALBANIL", cargo))
-
-
-View(as_tibble(query_results))
-
 final_tbl %>% 
 	glimpse()
-
 
 # ********************************************************************
 # create data for Tableau month dashboard : central_gov_salaries ----
@@ -567,313 +431,9 @@ write.csv(master_tbl, paste0(PATH_OUT, "central_gov_salaries_", actual_month,".c
 table(master_tbl$update_date)
 
 
-#master_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_", actual_month,".csv"))
-master_tbl %>% 
-	glimpse()
-
-master_tbl %>% 
-	distinct(entity)
-
-entities_tbl <- master_tbl %>% 
-	group_by(code, entity) %>% 
-	summarize(count = n(), amount = sum(total_income)) %>% 
-	arrange(desc(count))
-View(entities_tbl)
 
 # ********************************************************************
-# upload file to storage
-
+# END 
 # ********************************************************************
-# upload file to database staging table
-
-
-# ********************************************************************
-# google bigquery connection ----
-library(bigrquery)
-library(googledrive)
-library(gargle)
-get_record <- function(id) {
-	record_tbl <- master_tbl %>% 
-		filter(person_id == id) %>% 
-		select(person_id, complete_name, last_name, start_date, sex) %>% 
-		arrange(desc(start_date)) %>% head(1)
-	return (record_tbl)
-}
-
-# googledrive authentication
-httr::set_config(httr::config(http_version = 0))
-# autentication - only one time
-bq_auth(path = "./00_scripts/rowsums-2198b8679813.json", 
-				email = "gordon.erick@gmail.com", #gargle::gargle_oauth_email(),
-				cache = gargle::gargle_oauth_cache(),
-				use_oob = gargle::gargle_oob_default())
-
-#drive_auth(path = "./00_scripts/rowsums-2198b8679813.json")
-#project <- "rowsums"
-
-#projectid<-'rowsums'
-#datasetid<-'journalists'
-#bq_conn <-  dbConnect(bigquery(), 
-#											project = projectid,
-#											dataset = datasetid, 
-#											use_legacy_sql = FALSE
-#)
-
-
-
-sql <- "select max( employee_salary_id ) as max from journalists.f_employee_salary "
-count_result <- query_exec(sql, project = project, useLegacySql = FALSE)
-count_result$max
-
-names <- colnames(master_tbl)
-master_tbl <- master_tbl %>% 
-	mutate(employee_salary_id = as.integer(rownames(.))) %>% 
-	mutate(employee_salary_id = employee_salary_id + count_result$max) %>% 
-	select(employee_salary_id, names)
-min(master_tbl$employee_salary_id) - count_result # 1 it's ok
-
-# 1: Load principal table: staging_central_gov_salaries
-job <- insert_upload_job("rowsums", "data_test", table = "staging_central_gov_salaries", 
-	values = master_tbl, write_disposition = "WRITE_TRUNCATE")
-wait_for(job)
-
-cgs_tbl <- master_tbl
-cgs_tbl$employee_salary_id <- NULL
-job <- insert_upload_job("rowsums", "journalists", table = "central_gov_salaries", 
-	values = cgs_tbl, write_disposition = "WRITE_TRUNCATE")
-wait_for(job)
-
-# *****************
-# JOBS : new jobs? ADD MANUALLY    :(
-sql <- "SELECT position, count(*) as total, avg(salary) salary 
-FROM data_test.staging_central_gov_salaries where code != '900' and position not in (
-  SELECT job_title FROM journalists.d_jobs
-) GROUP BY position"
-query_results <- query_exec(sql, project = project, useLegacySql = FALSE)
-as_tibble(query_results) %>% 
-	arrange(desc(total))
-write.csv(as_tibble(query_results), paste0(PATH_OUT, "new_jobs", actual_month,".csv"))
-
-
-
-# *****************************
-# JOBS : new jobs? ADD MANUALLY    :(
-sql <- "SELECT position, count(*) as total, avg(salary) salary 
-FROM data_test.staging_central_gov_salaries where code = '900' and position not in (
-  SELECT job_title FROM journalists.d_jobs
-) GROUP BY position"
-query_results <- query_exec(sql, project = project, useLegacySql = FALSE)
-as_tibble(query_results) %>% 
-	arrange(desc(total))
-write.csv(as_tibble(query_results), paste0(PATH_OUT, "new_jobs_css", actual_month,".csv"))
-
-
-
-sql <- "SELECT max(jobs_id) max FROM journalists.d_jobs"
-count_result <- query_exec(sql, project = project, useLegacySql = FALSE)
-count_result$max + 1
-
-# add jobs manually
-jobs_tbl <- readr::read_csv(paste0(PATH_OUT, "out_final_jobs.csv"))
-jobs_tbl$jobs_id <- as.integer(jobs_tbl$jobs_id)
-jobs_tbl[1750:1753,]
-nrow(jobs_tbl)
-
-job <- insert_upload_job("rowsums", "journalists", table = "d_jobs", 
-	values = jobs_tbl, write_disposition = "WRITE_TRUNCATE")
-wait_for(job)
-
-# *****************
-# PEOPLE: add new people
-
-sql <- "SELECT max(people_id) count from journalists.d_people"
-query_results <- query_exec(sql, project = project, useLegacySql = FALSE)
-id <- query_results$count + 1
-
-# new people
-sql <- "SELECT person_id FROM data_test.staging_central_gov_salaries where person_id not in (select  person_id from journalists.d_people)"
-new_people_tbl <- query_exec(sql, project = project, useLegacySql = FALSE)
-new_people_tbl
-
-# insert new people
-people_tbl <- bind_rows(purrr::map_df(new_people_tbl$person_id, .f = function(x) {get_record(x)}))
-people_tbl
-table(people_tbl$sex, useNA = "always")
-
-#why??
-table(lubridate::year(people_tbl$start_date))
-people_tbl %>% 
-	mutate(year = lubridate::year(people_tbl$start_date)) %>% 
-	filter(year < 2019) %>% 
-	arrange(year)
-
-
-final <- id + nrow(people_tbl) - 1
-people_tbl$people_id <- seq(from = id, to = final ,by = 1)
-people_tbl$people_id <- as.integer(people_tbl$people_id)
-people_tbl$record_date <- last_update
-people_tbl <- people_tbl %>% 
-	rename(fist_name = complete_name) %>% 
-	select(people_id, person_id, fist_name, last_name, start_date, sex, record_date)
-#people_tbl$people_id <- as.character(people_tbl$people_id)
-
-nrow(people_tbl)
-people_tbl %>% 
-	glimpse()
-min(people_tbl$people_id)
-
-# add data to final tables 
-job <- insert_upload_job("rowsums", "journalists", table = "d_people", 
-	values = people_tbl, write_disposition = "WRITE_APPEND")
-wait_for(job)
-
-# *****************
-# DATE: date update
-
-# actual dates 
-sql <- "select record_id, record_date, processed_date, is_actual from journalists.d_date_upload"
-dates_records <- query_exec(sql, project = project, useLegacySql = FALSE)
-dates_records <- dates_records %>% 
-	arrange(record_id)
-dates_records %>% 
-	glimpse()
-dates_records
-
-new_record <- dates_records[1, ]
-new_record$record_id <- (max(dates_records$record_id) + 1)
-new_record$record_date <- as.Date(last_update)
-new_record$processed_date <-  as.Date(last_update) - as.difftime(1, unit = "days")
-new_record$is_actual <- 1
-
-dates_records$is_actual <- 0
-dates_records <- rbind(dates_records, new_record) # igualar con usuarios record_date
-dates_records$record_id <- as.integer(dates_records$record_id)
-dates_records
-job <- insert_upload_job("rowsums", "journalists", table = "d_date_upload", 
-	values = dates_records, write_disposition = "WRITE_TRUNCATE")
-wait_for(job)
-
-
-# *****************
-# F_EMPLOYEE_SALARY: finally...
-sql <- "INSERT INTO journalists.f_employee_salary
-SELECT c.employee_salary_id,
-p.people_id, c.person_id, e.entity_id, e.entity_name, 
-c.url, c.first_name, c.last_name, 
-j. jobs_id , j.job_title, j.job_position, 
-c.salary, c.expenses, c. total_income , c.status, c.start_date, 
-cast(d.record_id as INT64) record_id, d. processed_date , d.record_date, 
-c.sex, c.key,concat(c.person_id, " ", j.job_title) as key1
-FROM data_test.staging_central_gov_salaries c
-INNER JOIN journalists.d_people p ON p.person_id = c.person_id 
-INNER JOIN journalists.d_entity e ON e.entity_code = c.code  
-INNER JOIN journalists.d_jobs j ON j.job_title = c.position 
-INNER JOIN journalists.d_date_upload d ON d.record_date = c.record_date"
-employee_records <- query_exec(sql, project = project, useLegacySql = FALSE)
-
-#GENERATE_UUID()
-#(SHA256(Bizkey)) SurrogateKey
-#tidyverse::tidyverse_update()
-
-bigquery_conn <- bigrquery::src_bigquery(project = "rowsums", dataset = "journalists")
-# List table names
-src_tbls(bigquery_conn)
-
-f_employee_salary_out <- tbl(bigquery_conn, "f_employee_salary_out")
-total_tbl <- f_employee_salary_out %>% 
-	group_by(date_processed, record_date) %>% 
-	summarize(n = n()) 
-show_query(total_tbl)
-
-
-
-
-
-
-
-# ********************************************************************
-# google bigquery connection ----
-# install.packages("googledrive")
-# install.packages("gargle")
-
-library(bigrquery)
-library(googledrive)
-library(gargle)
-
-# googledrive
-drive_auth(path = "./00_scripts/rowsums-7a419b99de2f.json")
-
-
-project <- "rowsums"
-sql <- "select code, complete_name, last_name, person_id from journalists.central_gov_salaries limit 10"
-query_results <- query_exec(sql, project = project, useLegacySql = FALSE)
-query_results
-
-
-
-
-# ********************************************************************
-# load to google storage ----
-
-#Sys.setenv("GCS_AUTH_FILE" = "./00_scripts/rowsums-963a7bdf28fe.json") # bigquery reader
-path <- paste0(getwd(), "/00_scripts/rowsums-7a419b99de2f.json")
-Sys.setenv("GCS_AUTH_FILE" = path) # storage
-
-Sys.setenv("GCS_DEFAULT_BUCKET" = "rowsums.com")
-library(googleCloudStorageR)
-gcs_global_bucket('rowsums.com')
-gcs_get_global_bucket()
-
-## attempt upload
-big_file <- "./00_data/out/salaries/out_entities_extended.csv"
-upload_try <- gcs_upload(big_file)
-
-
-
-library(googleAuthR)
-options(googleAuthR.scopes.selected = "https://www.googleapis.com/auth/urlshortner")
-service_token <- gar_auth_service(json_file=path)
-analytics_url <- function(shortUrl, 
-                          timespan = c("allTime", "month", "week","day","twoHours")){
-  
-  timespan <- match.arg(timespan)
-  
-  f <- gar_api_generator("https://www.googleapis.com/urlshortener/v1/url",
-                         "GET",
-                         pars_args = list(shortUrl = "shortUrl",
-                                          projection = "FULL"),
-                         data_parse_function = function(x) { 
-                           a <- x$analytics 
-                           return(a[timespan][[1]])
-                         })
-  
-  f(pars_arguments = list(shortUrl = shortUrl))
-}
-analytics_url("https://goo.gl/2FcFVQbk")
-
-
-
-# realizados 
-# css 63M / 30K empleados: http://www.css.gob.pa/p/grid_defensoria/
-
-# http://www.utp.ac.pa/historial-de-planilla-de-empleados
-# https://www.ana.gob.pa/other/transp/planilla.php?page=83
-# up (15nal) 14M: http://consulta.up.ac.pa/PortalUp/planilla.aspx
-# metro: https://www.elmetrodepanama.com/transparencia-3/planilla-de-funcionarios/
-# antai: http://www.antai.gob.pa/11489-2/
-
-
-# canal de panama: http://www.defensoriadelpueblo.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=26
-# canal de panama: https://apps.pancanal.com/pls/defensoria/def2.inicio
-
-# unachi excel: http://www.unachi.ac.pa/transparencia
-# ifaruh pdf: https://www.ifarhu.gob.pa/transparencia/11-3-planillas/ 
-# pandeportes, pdf.
-# tocumenn: http://tocumenpanama.aero/index.php/planilla?find=all
-
-
-
-
-(153849 + 157304 + 158416 + 156577 + 156518 + 157753) / 6
 
 
