@@ -5,7 +5,7 @@ library(lubridate) # date processing
 library(furrr)     # Parallel Processing using purrr (iteration)
 library(purrr)     # Functional programming
 library(stringr)   # string processing
-library(pdftools)  # pdf reader library
+#library(pdftools)  # pdf reader library
 library(staplr)  # pdf reader library
 library(tabulizer)
 # ****************************************************

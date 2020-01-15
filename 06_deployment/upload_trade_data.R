@@ -39,6 +39,7 @@ set_save_log <- function(data_tbl)
 
 # process data records
 set_process_data <- function(file_name) {
+	# file_name <- "out_imports_2019-12-31.csv"
 	message_out <- ""
 	total <- 0
 	tryCatch(
@@ -108,10 +109,7 @@ set_process_data <- function(file_name) {
 				filter(day > 10 & day <= 18)
 			
 			third_tbl <- data_tbl %>% 
-				filter(day > 18 & day <= 24)
-			
-			four_tbl <- data_tbl %>% 
-				filter(day > 24)
+				filter(day > 18 & day <= 21)
 			
 			total <- nrow(first_tbl)
 			print(paste0('first uploading data: ', as.character(total), " records"))
@@ -126,11 +124,6 @@ set_process_data <- function(file_name) {
 			total <- nrow(third_tbl)
 			print(paste0('third uploading data: ', as.character(total), " records"))
 			upload_file(third_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
-			print('done!')
-			
-			total <- nrow(four_tbl)
-			print(paste0('four_tbl uploading data: ', as.character(total), " records"))
-			upload_file(four_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
 			print('done!')
 			
 			total_records <- nrow(data_tbl)
@@ -160,7 +153,7 @@ set_process_data <- function(file_name) {
 list_files <- base::list.files(PATH_OUT)
 data_tbl <- tibble(file_name = list_files)
 data_tbl$process_date <- Sys.Date()
-data_tbl
+data_tbl <- data_tbl[10,]
 
 httr::set_config(httr::config(http_version = 0))
 # autentication - only one time
@@ -192,12 +185,6 @@ system.time(
 data_tbl %>% 
 	head()
 
-data_test <-  readr::read_csv(paste0(PATH_OUT, "out_imports_2019-10-31.csv"))
-data_test %>% 
-	glimpse()
-error_tbl <- data_test[, c("text_original", "valor_del_flete")]
-error_tbl
-
 data_test %>% 
 	DataExplorer::plot_missing()
 
@@ -211,6 +198,9 @@ bq_deauth()
 #185851 valor_del_flete no trailing characters ,368.78 './00_data/out/imports/out_imports_2019-10-31.csv'
 #row             col               expected  actual                                               file
 #114771 valor_del_flete no trailing characters ,624.61 './00_data/out/imports/out_imports_2019-11-30.csv'
+
+
+set_process_data("out_imports_2019-12-31.csv")
 
 
 # git config --global user.email "gordon.erick@gmail.com"
