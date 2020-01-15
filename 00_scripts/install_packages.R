@@ -10,9 +10,10 @@ install.packages("shinydashboard") # dashboard structure
 install.packages("shinythemes") # shiny themes
 install.packages("shinyjs")
 install.packages("ggthemes")   # ggplot extra themes
-install.packages("plumber")  # for create web service REST with R
+install.packages("plumber")    # for create web service REST with R
 install.packages("rvest")      # for web scrawling 
-
+install.packages("anytime")    # Convert input in any one of character, integer, numeric, factor, or ordered type into 'POSIXct'
+install.packages("vroom")      # The goal of 'vroom' is to read and write data (like 'csv', 'tsv' and 'fwf') quickly. 
 
 # plots
 install.packages("GGally")
