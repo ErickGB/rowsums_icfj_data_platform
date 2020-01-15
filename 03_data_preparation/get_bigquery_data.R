@@ -5,7 +5,26 @@ library(bigrquery)
 library(googledrive)
 library(gargle)
 library(tidyverse)
+
+library(vroom)     # 
+library(anomalize)
+library(tidyquant)
+library(anytime) # Convert input in any one of character, integer, numeric, factor, or ordered type into 'POSIXct'
+library(plotly)
+
 PATH_OUT <- "./00_data/out/imports/"
+# ********************************************************************
+# functions
+plot_category <- function(code) {
+	g <- total_tbl %>%
+		filter(sub_category_code == code) %>% 
+		ggplot(aes(date, cif_total)) +
+		geom_line() +
+		expand_limits(y = 0) +
+		scale_y_continuous(labels = scales::number_format(big.mark = ","))
+	
+	ggplotly(g)
+}
 # ********************************************************************
 httr::set_config(httr::config(http_version = 0))
 # autentication - only one time
@@ -21,20 +40,132 @@ src_tbls(bigquery_conn)
 categories_tbl <- tbl(bigquery_conn, "trade.dim_category")
 categories_tbl <- collect(categories_tbl)
 
-imports_tbl <- tbl(bigquery_conn, "trade.fact_agg_product")
+imports_tbl <- tbl(bigquery_conn, "trade.fact_import")
 imports_tbl %>% 
 	glimpse()
 
+# prepare query ----
 total_ref <- imports_tbl %>% 
-	filter(year == 2019L) 
+	group_by(category_id, date) %>% 
+	summarize(cif_total = sum(cif), count_total = n(), gross_weight = sum(gross_weight))
 show_query(total_ref)
+# collect data ----
+total_tbl <- collect(total_ref) # 436.21 MB, Downloading 94,350 rows in 10 pages.
+nrow(total_tbl) # 94350
 
-total_tbl <- collect(total_ref)
-nrow(total_tbl) # 286,125
+# join
+total_tbl <- left_join(total_tbl, categories_tbl, by = 'category_id')
+
+# head
+total_tbl %>% 
+	arrange(desc(cif_total)) %>% 
+	head()
+
+plot_category("84") 
+
+date_tbl <-  total_tbl %>% 
+	filter(sub_category_code == "84") %>% 
+	mutate(date = anytime::anydate(date)) %>% 
+	arrange(date) %>% 
+	as_tibble()
+
+date_tbl %>% 
+	time_decompose(cif_total, merge = TRUE) %>%
+	anomalize(remainder) %>%
+	time_recompose() %>% 
+	select(date, cif_total, sub_category, observed, season, trend, remainder, remainder_l1, remainder_l2, anomaly, recomposed_l1, recomposed_l2) %>% 
+	head()
+
+
+date_tbl %>% 
+	time_decompose(cif_total, merge = TRUE) %>%
+	anomalize(remainder) %>%
+	time_recompose() %>% 
+	plot_anomalies(time_recomposed = TRUE) +
+	expand_limits(y = 0) +
+	scale_y_continuous(labels = scales::number_format(big.mark = ",")) +
+	labs(x = "Date", y = "cif_total")
+
+
+# descomposition SLT - Seasonal-Trend-Loess Method
+date_tbl %>% 
+	# Step 1 - Decomposition
+	time_decompose(
+		target  = cif_total, 
+		method  = "stl", # stl or twitter 
+		merge   = TRUE,
+		frequency = "7 days",
+		trend     = "3 months"
+	) %>%
+	# Step 2 - Detect Anomalies in Remainder (Residual Analysis)
+	anomalize(
+		target = remainder, 
+		method = "iqr", # iqr or gesd
+		alpha  = 0.05
+	) %>%
+	# Step 3 - Add Boundaries separating the anomaly lower and upper limits
+	time_recompose() %>%
+	
+	plot_anomaly_decomposition(alpha_dots = 0.5) + 
+	scale_y_continuous(labels = scales::number_format(big.mark = ",")) +
+	labs(title = "Anomaly Decomposition", subtitle = "Using Seasonal-Trend-Loess Method")
+
+# Trend & Frequency ----
+time_scale_template()
+
+
+
+
+# **************************************************
+# Multi-Time Series - Scaled to Top 12 categories ----
+
+top_20_categories <- total_tbl %>% 
+	group_by(sub_category_code) %>% 
+	summarize(cif = sum(cif_total)) %>% 
+	arrange(desc(cif)) %>% 
+	head(20) %>% 
+	pull(sub_category_code)
 
 total_tbl %>% 
-	head()
-#write.csv(total_tbl, paste0(PATH_OUT, "imports_class.csv"), row.names = FALSE)
+	count(date, sub_category_code) %>% 
+	filter(n > 1)
+
+
+temp <- total_tbl %>% 
+	filter(sub_category_code %in% c("87")) %>% 
+	mutate(date = anytime::anydate(date)) %>% 
+	arrange(date) %>% 
+	as_tibble() %>%
+	select(sub_category, date, cif_total)
+
+categories_tbl %>% 
+	filter(sub_category_code %in% top_20_categories[1:3]) %>% 
+	select(sub_category)
+
+
+time_categories_tbl <- total_tbl %>% 
+	filter(sub_category_code %in% top_20_categories) %>% 
+	mutate(date = anytime::anydate(date)) %>% 
+	arrange(date) %>% 
+	as_tibble() %>%
+	group_by(sub_category) %>% 
+	select(sub_category, date, cif_total) %>% 
+	time_decompose(cif_total, merge = TRUE) %>%
+	anomalize(remainder) %>%
+	time_recompose() %>%
+	mutate(visits_cleaned = ifelse(anomaly == "Yes", season + trend, observed))
+
+time_categories_tbl %>% 
+	plot_anomalies(ncol = 3, alpha_dots = 0.5)
+
+
+bq_deauth()
+
+
+# ***********************************************************
+# Top companies
+
+
 
 temp <- total_tbl %>% 
 	group_by(company) %>% 
@@ -63,55 +194,4 @@ summary_tbl <- total_tbl %>%
 
 summary_tbl[is.na(summary_tbl)] <- 0
 train_tbl <- as_tibble(scale(summary_tbl[,-1]))
-
-# ********************************************************************
-# backup 
-
-bigquery_conn <- bigrquery::src_bigquery(project = "rowsums", dataset = "journalists")
-# List table names
-src_tbls(bigquery_conn)
-
-salary_tbl <- tbl(bigquery_conn, "journalists.f_employee_salary")
-salary_tbl <- collect(salary_tbl)
-
-salary_tbl %>% 
-	glimpse()
-
-PATH_OUT <- "./00_data/out/salaries/"
-write.csv(salary_tbl, paste0(PATH_OUT, "salary_oct.csv"), row.names = FALSE)
-
-people_tbl <- tbl(bigquery_conn, "journalists.d_people")
-people_tbl <- collect(people_tbl)
-write.csv(people_tbl, paste0(PATH_OUT, "people_oct.csv"), row.names = FALSE)
-
-
-jobs_tbl <- tbl(bigquery_conn, "journalists.d_jobs")
-jobs_tbl <- collect(jobs_tbl)
-write.csv(jobs_tbl, paste0(PATH_OUT, "jobs_oct.csv"), row.names = FALSE)
-
-entity_tbl <- tbl(bigquery_conn, "journalists.d_entity")
-entity_tbl <- collect(entity_tbl)
-write.csv(entity_tbl, paste0(PATH_OUT, "entity_oct.csv"), row.names = FALSE)
-
-
-upload_tbl <- tbl(bigquery_conn, "journalists.d_date_upload")
-upload_tbl <- collect(upload_tbl)
-write.csv(upload_tbl, paste0(PATH_OUT, "entity_oct.csv"), row.names = FALSE)
-
-
-travel_tbl <- tbl(bigquery_conn, "journalists.f_travel_expenses")
-travel_tbl <- collect(travel_tbl)
-write.csv(travel_tbl, paste0(PATH_OUT, "travel_oct.csv"), row.names = FALSE)
-
-mapping_tbl <- tbl(bigquery_conn, "journalists.d_mapping_city")
-mapping_tbl <- collect(mapping_tbl)
-write.csv(mapping_tbl, paste0(PATH_OUT, "travel_oct.csv"), row.names = FALSE)
-
-historical_tbl <- tbl(bigquery_conn, "journalists.historical_gov_employees")
-historical_tbl <- collect(historical_tbl)
-write.csv(historical_tbl, paste0(PATH_OUT, "hist_oct.csv"), row.names = FALSE)
-
-
-bq_deauth()
-
 

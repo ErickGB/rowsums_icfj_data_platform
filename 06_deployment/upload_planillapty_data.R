@@ -284,8 +284,9 @@ analytics_url("https://goo.gl/2FcFVQbk")
 # up (15nal) 14M: http://consulta.up.ac.pa/PortalUp/planilla.aspx
 # metro: https://www.elmetrodepanama.com/transparencia-3/planilla-de-funcionarios/
 # antai: http://www.antai.gob.pa/11489-2/
+# senacyt: http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&id=162
 
-
+# ACP: http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=26
 # canal de panama: http://www.defensoriadelpueblo.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=26
 # canal de panama: https://apps.pancanal.com/pls/defensoria/def2.inicio
 
@@ -295,6 +296,20 @@ analytics_url("https://goo.gl/2FcFVQbk")
 # tocumenn: http://tocumenpanama.aero/index.php/planilla?find=all
 
 
+# http://ogov.defensoria.gob.pa/transparencia/
 
+
+DEIMIR 0900721001614,
+INGENIERIA NATPA, S.A.
+31 October 2019 (3 months ago)
+
+0900721001614,
+9-721-1614,
+
+0100702000843,
+1  702   843
+
+0700118000217,
+7  118   217
 
 
