@@ -430,6 +430,8 @@ nrow(master_tbl)
 write.csv(master_tbl, paste0(PATH_OUT, "central_gov_salaries_", actual_month,".csv"), row.names = FALSE) 
 table(master_tbl$update_date)
 
+
+
 # ********************************************************************
 # END 
 # ********************************************************************

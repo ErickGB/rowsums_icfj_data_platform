@@ -375,6 +375,8 @@ write.csv(master_css_tbl, paste0(PATH_OUT, "central_css_gov_salaries_", actual_m
 rm(body_html, error_tbl, final_tbl)
 warnings() 
 
+
+
 # Nota: Validar caso de
 # RUSBEL     BATISTA   9-0098-00959 DIRECTOR_NACIONAL... 5k + 7k = 12k
 # ********************************************************************
