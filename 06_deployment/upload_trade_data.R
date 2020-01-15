@@ -102,29 +102,17 @@ set_process_data <- function(file_name) {
 			data_tbl %>% 
 				DataExplorer::plot_missing()
 			
-			first_tbl <- data_tbl %>% 
-				filter(day <= 10)
+			distinct_days <- data_tbl %>% 
+				distinct(date) 
+			
+			for(day in distinct_days$date) {
+				first_tbl <- data_tbl %>% 
+					filter(date == date)
 				
-			second_tbl <- data_tbl %>% 
-				filter(day > 10 & day <= 18)
-			
-			third_tbl <- data_tbl %>% 
-				filter(day > 18 & day <= 21)
-			
-			total <- nrow(first_tbl)
-			print(paste0('first uploading data: ', as.character(total), " records"))
-			upload_file(first_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
-			print('done!')
-			
-			total <- nrow(second_tbl)
-			print(paste0('second uploading data: ', as.character(total), " records"))
-			upload_file(second_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
-			print('done!')
-			
-			total <- nrow(third_tbl)
-			print(paste0('third uploading data: ', as.character(total), " records"))
-			upload_file(third_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
-			print('done!')
+					total <- nrow(first_tbl)
+					upload_file(first_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
+					print(paste0(as.character(day),  ': uploading data ->', as.character(total), " records, done!"))
+			}
 			
 			total_records <- nrow(data_tbl)
 			return(total_records)
@@ -157,10 +145,10 @@ data_tbl <- data_tbl[10,]
 
 httr::set_config(httr::config(http_version = 0))
 # autentication - only one time
-bq_auth(path = "./00_scripts/rowsums-2198b8679813.json", 
-				email = "gordon.erick@gmail.com", #gargle::gargle_oauth_email(),
-				cache = gargle::gargle_oauth_cache(),
-				use_oob = gargle::gargle_oob_default())
+#bq_auth(path = "./00_scripts/rowsums-2198b8679813.json", 
+#				email = "gordon.erick@gmail.com", #gargle::gargle_oauth_email(),
+#				cache = gargle::gargle_oauth_cache(),
+#				use_oob = gargle::gargle_oob_default())
 				
 drive_auth(path = "./00_scripts/rowsums-2198b8679813.json")
 project <- "rowsums"
@@ -206,6 +194,15 @@ set_process_data("out_imports_2019-12-31.csv")
 # git config --global user.email "gordon.erick@gmail.com"
 # git config --global user.name "ErickGB"
 
+/*
+INSERT INTO trade.dim_country
+select GENERATE_UUID(), 'SC', 'SYC', 'ISO 3166-2:SC', '690', 'Seychelles', 'Africa', 'Sub-Saharan Africa', '002', '202', -4.325, 55.371, 1, NULL 
+
+INSERT INTO trade.dim_country
+select GENERATE_UUID(), 'SK', 'SKV', 'ISO 3166-2:SK', '703', 'Slovakia', 'Europe', 'Eastern Europe', '150', '151', 48.72, 19.347, 1, NULL 
+
+*/
+
 insert into trade.fact_import
 select GENERATE_UUID(), ca.category_id, co.country_id, 
 cast(concat(substr(cast(im.date as string), 1, 4), substr(cast(im.date as string), 6, 2), substr(cast(im.date as string), 9, 2)) as INT64), 
@@ -214,11 +211,11 @@ description, key, original_text, quantity_text,
 tariff_fraction, import_taxes, oil_protection_taxes, isc_taxes, itbms_taxes, 
 gross_weight_text, net_weight_text, port, total_to_pay, cif, freight_value, insurance, fob, quantity, gross_weight, net_weight,
 day, month, cast(extract(year from im.date) as int64), country_data, year_month_date, 
-cast(concat(substr(cast(im.date as string), 1, 8),'01') as date), 2
+cast(concat(substr(cast(im.date as string), 1, 8),'01') as date), 3
 from data_test.staging_imports im 
 inner join trade.dim_category ca on ca.sub_category_code = substr(tariff_fraction, 1, 2)
 inner join trade.dim_country co on co.alpha_2 = country_origin_code 
-where input_date > cast('2019-12-01' as date) 
+where input_date > cast('2020-01-01' as date) 
 
 
 
