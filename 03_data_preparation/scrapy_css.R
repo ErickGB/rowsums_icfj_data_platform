@@ -168,6 +168,10 @@ file_name <- paste0("./00_data/images/2020/css/css_principal_page_", process_mon
 img_princial <- render_png(url = url_css, wait = 5)
 image_write(img_princial, file_name)
 
+#file_name <- paste0("./00_data/images/2020/antai/", "ANTAI-DS-DTAI-3989-2018",".png")
+#img_princial <- render_png(url = "https://www.antai.gob.pa/circutar-no-antai-ds-dtai-3989-2018/", wait = 5)
+#image_write(img_princial, file_name)
+
 # ***********************************************
 # scraping CSS web page 
 # ***********************************************
