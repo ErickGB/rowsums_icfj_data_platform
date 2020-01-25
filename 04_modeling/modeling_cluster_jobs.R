@@ -51,8 +51,9 @@ class(data_raw_tbl)
 
 # get jobs summary 
 jobs_tbl <- data_raw_tbl %>% 
+	#filter(record_id == 9) %>% 
 	mutate(years = lubridate::year(Sys.Date()) - year(start_date)) %>% 
-	group_by(job_title, job_position) %>% 
+	group_by(job_id, job_title, job_position) %>% 
 	summarize(count = n(), salary = mean(total, na.rm = TRUE), years = round(mean(years, na.rm = TRUE), digits=0)) %>% 
 	arrange(desc(count))
 
@@ -81,7 +82,8 @@ jobs_summary_tbl$outlier <- outliers
 (table(jobs_summary_tbl$outlier)/nrow(jobs_summary_tbl)) * 100
 
 jobs_summary_tbl %>% 
-	filter(outlier == 1)
+	filter(outlier == 1) %>% 
+	arrange(desc(salary))
 
 jobs_summary_tbl$years <- ifelse(jobs_summary_tbl$years >= 3 & jobs_summary_tbl$years  <= 5, 5, jobs_summary_tbl$years)
 jobs_summary_tbl$years <- ifelse(jobs_summary_tbl$years > 5 & jobs_summary_tbl$years  <= 10, 10, jobs_summary_tbl$years)
@@ -89,13 +91,18 @@ jobs_summary_tbl$years <- ifelse(jobs_summary_tbl$years > 10 & jobs_summary_tbl$
 jobs_summary_tbl$years <- ifelse(jobs_summary_tbl$years > 20, 20, jobs_summary_tbl$years)
 jobs_summary_tbl$years <- paste0('x_', jobs_summary_tbl$years)
 
+# outliers: 115
 outliers_tbl <- jobs_summary_tbl %>% 
-	select(job_title, count, salary) %>% 
+	filter(outlier == 1) %>% 
+	select(job_id, job_title, count, salary) %>% 
 	mutate(outlier = 99)
 
+# no outliers
 train_tbl <- jobs_summary_tbl %>% 
 	filter(outlier != 1) %>% 
-	select(job_title, count, salary) 
+	select(job_id, job_title, count, salary) 
+job_id <- train_tbl$job_id
+train_tbl$job_id <- NULL 
 ncol <- ncol(train_tbl)
 
 
@@ -162,7 +169,7 @@ d
 
 
 # After, create cluster with k selected
-base_centers <- 6 #  0.4715790
+base_centers <- 3 #  0.4715790
 clusters <- list()
 fit <- NA
 # Because k-means is sensitive to starting conditions, the algorithm was randomly initialized 100,000 times
@@ -187,21 +194,47 @@ kms_res <- eclust(train_prepared_tbl, "kmeans", k = base_centers, nstart = 20, g
 fviz_silhouette(kms_res, palette = "jco", ggtheme = theme_classic()) 
 
 # Visualize k-means clusters
-fviz_cluster(kms_res, geom = "point", ellipse.type = "norm",
-             palette = "jco", ggtheme = theme_minimal())
+#fviz_cluster(kms_res, geom = "point", ellipse.type = "norm",
+#             palette = "jco", ggtheme = theme_minimal())
 
-data_raw_tbl %>% 
-	filter(cluster == 3)
-
+ 
 train_tbl$cluster <- as.factor(clusters$cluster)     
-train_tbl$job_title <- rownames(train_tbl)
+train_tbl$job_id <- job_id
 table(train_tbl$cluster)
 train_tbl %>% head()
 
+outliers_tbl <- outliers_tbl %>% 
+	rename(cluster = outlier)
+
+train_complete_tbl <- rbind(outliers_tbl[, c("job_id", "cluster")], train_tbl[, c("job_id", "cluster")])
+
+jobs_summary_tbl <- left_join(jobs_summary_tbl, train_complete_tbl, by = "job_id")
+table(jobs_summary_tbl$cluster, useNA = "always")
+write.csv(jobs_summary_tbl, paste0(PATH_OUT, "job_summary_outlier.csv"), row.names = FALSE)
+write.csv(jobs_summary_tbl[, c("job_id", "cluster")], paste0(PATH_OUT, "out_cluster_outlier.csv"), row.names = FALSE)
 
 
+jobs_raw_tbl_2 <- dplyr::tbl(bq_conn, "d_jobs") # connects to a table but no load data in memory
+class(jobs_raw_tbl)
 
-jobs_summary_tbl <- left_join(jobs_summary_tbl, train_tbl, by = "job_title")
+jobs_raw_tbl_2 <- jobs_raw_tbl_2 %>% 
+	collect()
+
+jobs_summary_tbl <- jobs_summary_tbl %>% 
+	rename(jobs_id = job_id)
+
+
+jobs_raw_tbl <- left_join(jobs_raw_tbl, jobs_summary_tbl[, c("jobs_id", "cluster")], by = 'jobs_id')
+jobs_raw_tbl %>% 
+	plot_missing()
+
+jobs_raw_tbl <- jobs_raw_tbl %>% 
+	mutate(PEP2 = ifelse(is.na(PEP2) == TRUE, 0, PEP2), 
+				 cluster = as.integer(cluster))
+
+
+job <- insert_upload_job("rowsums", "journalists", table = "d_jobs", 
+												 values = jobs_raw_tbl, write_disposition = "WRITE_TRUNCATE")
 
 
 # *******************************************************************************
@@ -210,7 +243,7 @@ jobs_summary_tbl <- left_join(jobs_summary_tbl, train_tbl, by = "job_title")
 # create a distance matric describing the disimilarity among the 250 clusters
 diss_ctr <- dist(final$centers)
 #heatmap(as.matrix(diss_ctr), hclustfun= function(d) hclust(d, method="ward.D2"))
-barplot(height=summary(data_raw_tbl$cluster, base_centers), names.arg=1:base_centers, main="cluster sizes")
+barplot(height=summary(jobs_summary_tbl$cluster, base_centers), names.arg=1:base_centers, main="cluster sizes")
 write.csv(data_raw_tbl, paste0(PATH_OUT, "out_cluster_5_1.csv"), row.names = FALSE)
 
 data_raw_outlier_tbl <- readr::read_csv(paste0(PATH_OUT, "out_job_title_summary_outliers.csv"))

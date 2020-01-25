@@ -263,7 +263,7 @@ sum(final_expanded_tbl$over_costs) # 5,451,908
 sum(final_expanded_tbl$total) # 63,300,141
 
 # write data processing
-write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_processing_dic.csv"))
+write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_processing_dic.csv"), row.names = FALSE)
 
 
 # **************************

@@ -155,31 +155,14 @@ record_tbl <- record_tbl %>%
 	filter(is.na(expenses) == FALSE & is.na(salary) == FALSE) %>% 
 	rename(
 	code = codigo, person_id = cedula, 
-	complete_name = nombre, last_name = apellido, position = cargo, start_date = fecha_inicio, first_name = primer_nombre, 
+	#complete_name = nombre, last_name = apellido, position = cargo, start_date = fecha_inicio, first_name = primer_nombre, 
 	entity = entidad, update_date = last_update
-)  %>%	
-	select(code, complete_name, last_name, person_id, position, salary, expenses, total_income, status, 
-				 start_date, first_name, entity, update_date, sex, url, record_date, key, 
-				 over_costs, departament) 
+) # %>%	
+	#select(code, complete_name, last_name, person_id, position, salary, expenses, total_income, status, 
+	#			 start_date, first_name, entity, update_date, sex, url, record_date, key, 
+	#			 over_costs, departament) 
 
-write.csv(master_css_tbl, paste0(PATH_OUT, "central_meduca_gov_salaries_", process_month,".csv"), row.names = FALSE) 
-
-
-
-
-
-
-cedula = as.character(text_tbl[3, 1]),         # CEDULA
-nombre = paste(unlist(text_tbl[4:(rows-7),]), collapse=' '),       # NOMBRE
-status = as.character(text_tbl[rows-6,]),       # CONDICION_EN_PLANILLA
-salary = as.character(text_tbl[rows-5,]),       # SALARIO_FIJO 
-overcost = as.character(text_tbl[rows-4,]),     # SOBRESUELDO
-access = as.character(text_tbl[rows-3,]),       # DIFICIL_ACCESO
-vocational = as.character(text_tbl[rows-2,]),   # COMP_VOCACIONA
-others = as.character(text_tbl[rows-1,]),       # SUP_Y_OTRAS_COMPEN
-expenses = as.character(text_tbl[rows,])      # GTOSDEREPRESE
-
-
+write.csv(record_tbl, paste0(PATH_OUT, "meduca_gov_salaries_", process_month,".csv"), row.names = FALSE) 
 
 
 # END

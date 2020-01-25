@@ -4,6 +4,7 @@ install.packages('devtools')
 install.packages("DataExplorer")
 install.packages("janitor")
 
+
 # shiny
 install.packages("shiny") 
 install.packages("shinydashboard") # dashboard structure
@@ -36,6 +37,7 @@ install.packages("pdp")        # ML global interpretation
 install.packages("caret")      # ML model building
 install.packages("DALEX")      # Machine Learning models are widely used and have various applications in classification or regression 
 install.packages("VGAM")
+install.packages("vtreat")
 
 install.packages("unpivotr")
 install.packages("tidyxl")

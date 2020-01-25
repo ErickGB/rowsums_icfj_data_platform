@@ -1,12 +1,3 @@
-
-
-# ********************************************************************
-# upload file to storage
-
-# ********************************************************************
-# upload file to database staging table
-
-
 # ********************************************************************
 # google bigquery connection ----
 library(bigrquery)
@@ -19,7 +10,48 @@ get_record <- function(id) {
 		arrange(desc(start_date)) %>% head(1)
 	return (record_tbl)
 }
+PATH_OUT <- "./00_data/out/salaries/pending_process/"
+date_time <- as.character(Sys.Date()) # process execution day
+last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
+process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
+process_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
+
+# ********************************************************************
+# upload file 
+
+css_tbl <- readr::read_csv(paste0(PATH_OUT, "central_css_gov_salaries_", process_month, ".csv"))
+cgr_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_", process_month, ".csv"))
+mic_tbl <- readr::read_csv(paste0(PATH_OUT, "mic_gov_salaries_", process_month, ".csv"))
+meduca_tbl <- readr::read_csv(paste0(PATH_OUT, "meduca_gov_salaries_", process_month, ".csv"))
+meduca_tbl %>% 
+	glimpse()
+
+nrow(css_tbl) + 
+nrow(cgr_tbl) + 
+nrow(mic_tbl) + nrow(meduca_tbl)
+# 184184 - 195224
+
+master_tbl <- rbind(cgr_tbl, css_tbl)
+colnames(mic_tbl)
+master_tbl <- rbind(master_tbl, mic_tbl)
+nrow(master_tbl)
+
+master_tbl %>% 
+	glimpse()
+
+# temporally out MEDUCA
+master_tbl <- master_tbl %>% 
+	filter(code != "007")
+# A tibble: 122,901 x 19
+
+View(master_tbl %>% 
+	group_by(code, entity) %>% 
+	summarize(total = sum(total_income), count = n()) %>% 
+	arrange(desc(count)))
+
+
+# ********************************************************************
 # googledrive authentication
 httr::set_config(httr::config(http_version = 0))
 # autentication - only one time
@@ -28,17 +60,16 @@ bq_auth(path = "./00_scripts/rowsums-2198b8679813.json",
 				cache = gargle::gargle_oauth_cache(),
 				use_oob = gargle::gargle_oob_default())
 
-#drive_auth(path = "./00_scripts/rowsums-2198b8679813.json")
-#project <- "rowsums"
+drive_auth(path = "./00_scripts/rowsums-2198b8679813.json")
+project <- "rowsums"
 
-#projectid<-'rowsums'
-#datasetid<-'journalists'
-#bq_conn <-  dbConnect(bigquery(), 
-#											project = projectid,
-#											dataset = datasetid, 
-#											use_legacy_sql = FALSE
-#)
-
+projectid<-'rowsums'
+datasetid<-'journalists'
+bq_conn <-  dbConnect(bigquery(), 
+											project = projectid,
+											dataset = datasetid, 
+											use_legacy_sql = FALSE
+)
 
 
 sql <- "select max( employee_salary_id ) as max from journalists.f_employee_salary "
@@ -65,14 +96,14 @@ wait_for(job)
 
 # *****************
 # JOBS : new jobs? ADD MANUALLY    :(
-sql <- "SELECT position, count(*) as total, avg(salary) salary 
+sql <- "SELECT entity, upper(position) position, count(*) as total, avg(salary) salary 
 FROM data_test.staging_central_gov_salaries where code != '900' and position not in (
   SELECT job_title FROM journalists.d_jobs
-) GROUP BY position"
+) GROUP BY entity, position"
 query_results <- query_exec(sql, project = project, useLegacySql = FALSE)
 as_tibble(query_results) %>% 
-	arrange(desc(total))
-write.csv(as_tibble(query_results), paste0(PATH_OUT, "new_jobs", actual_month,".csv"))
+	arrange(desc(salary))
+write.csv(as_tibble(query_results), paste0(PATH_OUT, "new_jobs", process_month,".csv"))
 
 
 
@@ -234,6 +265,8 @@ query_results
 
 
 
+# ********************************************************************
+# upload file to storage
 
 # ********************************************************************
 # load to google storage ----
@@ -296,7 +329,67 @@ analytics_url("https://goo.gl/2FcFVQbk")
 # tocumenn: http://tocumenpanama.aero/index.php/planilla?find=all
 
 
+# **********************************************************************
+# DEFENSORIA DEL PUEBLO
 # http://ogov.defensoria.gob.pa/transparencia/
+
+# Lotería Nacional de Beneficencia - 2020-01-10 05:00:11, 1868 Records ** cedula sin formato
+# http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=82
+
+#Instituto Nacional de Cultura - 2020-01-17 10:17:47, 1009
+#http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=74
+
+
+# Autoridad Nacional de los Servicios Públicos - 2020-01-08 04:13:08 - 512
+# http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=33
+
+# Autoridad de Protección al Consumidor- ACODECO, 501
+# http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=22
+
+# Autoridad Panameña de Seguridad de Alimentos - 2020-01-10 04:32:00 
+# http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&id=165
+
+#Defensoría del Pueblo - 2020-01-13 04:11:24, 200
+#http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=54
+
+
+# ***************
+# SIN CEDULA
+
+# ATP 2019-12-19 11:07:04 **SIN CEDULA,
+# http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=24
+
+# ACP - 2019-12-31 10:38:36 **SIN CEDULA,
+# http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=26
+
+# Autoridad Marítima de Panamá - 2020-01-16 11:30:35 **SIN CEDULA, 1500
+# http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=31&p=1
+
+
+# BACKUP.. Revisar si actualizan en enero.
+
+# MEDUCA 2019-12-26 01:39:10 *
+#http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=92
+
+
+
+
+# **********************************************************************
+# PRESENTACIÓN
+# ¿Qué dice la regulación sobre las PEP?
+# ¿En que consiste el servicio? 
+# ¿De dónde se optienen los datos?
+# ¿Cómo identificamos los PEP?
+		# cargos de elección popular, ministros y vice-ministros, directores, policias, jueces
+# Productos
+	# servicio mensual
+	# down para datos actuales. 
+	# empleados nuevos * 
+
+# presentar tabla de empleados pep
+
+
+
 
 
 DEIMIR 0900721001614,
