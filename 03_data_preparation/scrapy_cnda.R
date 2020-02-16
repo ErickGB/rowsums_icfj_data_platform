@@ -14,8 +14,8 @@ library(DataExplorer)
 
 # ***********************************************
 PATH_OUT <- "./00_data/out/imports/"
-date_start <- "2019-12-01"
-date_end <- "2019-12-31"
+date_start <- "2020-01-01"
+date_end <- "2020-01-31"
 record_type <- "I" # I = Imports, E = exports 
 page_record <- ifelse(record_type == "I", 50000, 1000)
 date_time <- as.character(Sys.Date())
@@ -91,6 +91,8 @@ table(substr(records_tbl$peso_neto, nchar(records_tbl$peso_neto) - 1, nchar(reco
 # save montly file 
 write.csv(records_tbl, #fileEncoding = "UTF-8",
 	paste0(PATH_OUT, "out_imports_", date_end,".csv"), row.names = FALSE)
+
+paste0(PATH_OUT, "out_imports_", date_end,".csv")
 
 rm(records_tbl) # data tables
 rm(get_count, get_all_products) # functions

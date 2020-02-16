@@ -14,9 +14,10 @@ library(XML)
 library(bigrquery)
 # *******************************************************************************
 PATH_OUT <- "./00_data/out/salaries/"    
+PATH_PROCESS_OUT <- "./00_data/out/salaries/pending_process/"    
 date_time <- as.character(Sys.Date())    
-actual_month <- "dic"                    # 
-last_update <- as.Date('2019-12-01')     #
+actual_month <- "ene"                    # 
+last_update <- as.Date('2020-01-10')     #
 requiere_joins_files <- TRUE             # requiere row bindws with other extraccion
 # *******************************************************************************
 # Load supplementary data ----
@@ -427,7 +428,7 @@ master_tbl %>%
 View(master_tbl)
 
 nrow(master_tbl)
-write.csv(master_tbl, paste0(PATH_OUT, "central_gov_salaries_", actual_month,".csv"), row.names = FALSE) 
+write.csv(master_tbl, paste0(PATH_PROCESS_OUT, "central_gov_salaries_", actual_month,".csv"), row.names = FALSE) 
 table(master_tbl$update_date)
 
 

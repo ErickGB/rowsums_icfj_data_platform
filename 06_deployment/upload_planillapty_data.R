@@ -1,3 +1,5 @@
+cat("\014")
+gc() # garbage collector
 # ********************************************************************
 # google bigquery connection ----
 library(bigrquery)
@@ -10,7 +12,7 @@ get_record <- function(id) {
 		arrange(desc(start_date)) %>% head(1)
 	return (record_tbl)
 }
-PATH_OUT <- "./00_data/out/salaries/pending_process/"
+PATH_OUT <- "./00_data/out/salaries/pending_process/december/"
 date_time <- as.character(Sys.Date()) # process execution day
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
@@ -19,38 +21,89 @@ process_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)
 
 # ********************************************************************
 # upload file 
+list_files <- list.files(PATH_OUT)
+master_tbl <- tibble()
+for(i in 1:length(list_files))
+{
+	print(list_files[i])
+	temp_raw_tbl <- readr::read_csv(paste0(PATH_OUT, list_files[i]))
+	temp_raw_tbl$file_name <- as.character(list_files[i])
+	if(i == 1) {
+		master_tbl <- temp_raw_tbl
+	}	else {
+		master_tbl <- rbind(master_tbl, temp_raw_tbl)
+	}
+}
 
-css_tbl <- readr::read_csv(paste0(PATH_OUT, "central_css_gov_salaries_", process_month, ".csv"))
-cgr_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_", process_month, ".csv"))
-mic_tbl <- readr::read_csv(paste0(PATH_OUT, "mic_gov_salaries_", process_month, ".csv"))
-meduca_tbl <- readr::read_csv(paste0(PATH_OUT, "meduca_gov_salaries_", process_month, ".csv"))
-meduca_tbl %>% 
+# date_processed = fecha de registro del dato.. debería ser record_date
+# record_date = fecha en la que se proceso... debería ser processed_date
+# date_processed = css es record_date  ... en central gov es update_date.. 
+# record_date = css es update_date ... en central gov es record_date
+#central_css_gov_salaries_december.csv cambiar update_date a 2020-01-01
+
+master_tbl %>% 
 	glimpse()
 
-nrow(css_tbl) + 
-nrow(cgr_tbl) + 
-nrow(mic_tbl) + nrow(meduca_tbl)
-# 184184 - 195224
 
-master_tbl <- rbind(cgr_tbl, css_tbl)
-colnames(mic_tbl)
-master_tbl <- rbind(master_tbl, mic_tbl)
+master_tbl <- master_tbl %>% 
+	filter(is.null(start_date) == FALSE) %>% 
+	mutate(
+		update_date = as.Date('2019-12-17', tryFormat = '%Y-%m-%d'), 
+		record_date = as.Date('2019-12-31', tryFormat = '%Y-%m-%d'), 
+		status = toupper(str_trim(status, side = "both"))
+				 )
+
+# master_tbl <- readr::read_csv(paste0("./00_data/out/salaries/", "miamb_employees_processing_november.csv"))
+#css_tbl <- readr::read_csv(paste0(PATH_OUT, "central_css_gov_salaries_", process_month, ".csv"))
+#cgr_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_", process_month, ".csv"))
+#mic_tbl <- readr::read_csv(paste0(PATH_OUT, "mic_gov_salaries_", process_month, ".csv"))
+#meduca_tbl <- readr::read_csv(paste0(PATH_OUT, "meduca_gov_salaries_", process_month, ".csv"))
+# 184184 - 195224
 nrow(master_tbl)
 
 master_tbl %>% 
 	glimpse()
 
+master_tbl %>% 
+	DataExplorer::plot_missing()
+
+master_tbl <- master_tbl %>% 
+	mutate(
+		last_name = ifelse(is.na(last_name), " ", last_name),
+		start_date = as.character(start_date),
+		start_date = ifelse(is.na(start_date), '1920-12-01', start_date)
+	) %>%
+	mutate(
+		start_date = as.Date(start_date, tryFormat = '%Y-%m-%d') 
+	)
+
+master_tbl %>% 
+	mutate(month = lubridate::month(update_date)) %>% 
+	group_by(month, file_name) %>% 
+	summarize(total = n(), max_date = max(start_date))
+
 # temporally out MEDUCA
 master_tbl <- master_tbl %>% 
 	filter(code != "007")
+
+master_tbl %>%  
+	filter(is.na(start_date))
+
 # A tibble: 122,901 x 19
+table(master_tbl$url, master_tbl$update_date)
+
 
 View(master_tbl %>% 
 	group_by(code, entity) %>% 
 	summarize(total = sum(total_income), count = n()) %>% 
 	arrange(desc(count)))
 
+View( master_tbl[34540:34595, ] ) %>% 
+	glimpse()
 
+master_tbl %>% 
+	glimpse()
+ 
 # ********************************************************************
 # googledrive authentication
 httr::set_config(httr::config(http_version = 0))
@@ -76,20 +129,38 @@ sql <- "select max( employee_salary_id ) as max from journalists.f_employee_sala
 count_result <- query_exec(sql, project = project, useLegacySql = FALSE)
 count_result$max
 
-names <- colnames(master_tbl)
-master_tbl <- master_tbl %>% 
+cgs_tbl <- master_tbl
+cgs_tbl$file_name <- NULL
+
+
+names <- colnames(cgs_tbl)
+cgs_tbl <- cgs_tbl %>% 
 	mutate(employee_salary_id = as.integer(rownames(.))) %>% 
 	mutate(employee_salary_id = employee_salary_id + count_result$max) %>% 
 	select(employee_salary_id, names)
-min(master_tbl$employee_salary_id) - count_result # 1 it's ok
+min(cgs_tbl$employee_salary_id) - count_result # 1 it's ok
+
+
+View(cgs_tbl[c(34542:34543),])
+cgs_tbl[c(34540:34545),] %>% 
+	glimpse()
 
 # 1: Load principal table: staging_central_gov_salaries
-job <- insert_upload_job("rowsums", "data_test", table = "staging_central_gov_salaries", 
-												 values = master_tbl, write_disposition = "WRITE_TRUNCATE")
-wait_for(job)
+tryCatch(
+	{
+		cgs_tbl_2 <- cgs_tbl[c(34596),]
+		job <- insert_upload_job("rowsums", "data_test", table = "staging_central_gov_salaries", 
+														 values = cgs_tbl_2, write_disposition = "WRITE_TRUNCATE")
+		status <- wait_for(job)
+	}, # end try
+error=function(error_message) {
+	print(error_message)
+}) 
+
 
 cgs_tbl <- master_tbl
 cgs_tbl$employee_salary_id <- NULL
+cgs_tbl$file_name <- NULL
 job <- insert_upload_job("rowsums", "journalists", table = "central_gov_salaries", 
 												 values = cgs_tbl, write_disposition = "WRITE_TRUNCATE")
 wait_for(job)
@@ -391,18 +462,5 @@ analytics_url("https://goo.gl/2FcFVQbk")
 
 
 
-
-DEIMIR 0900721001614,
-INGENIERIA NATPA, S.A.
-31 October 2019 (3 months ago)
-
-0900721001614,
-9-721-1614,
-
-0100702000843,
-1  702   843
-
-0700118000217,
-7  118   217
 
 

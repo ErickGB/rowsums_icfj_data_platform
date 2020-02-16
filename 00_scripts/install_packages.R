@@ -3,7 +3,7 @@ install.packages("readr")      # load data
 install.packages('devtools')
 install.packages("DataExplorer")
 install.packages("janitor")
-
+install.packages("refinr") # Cluster and merge similar char values: an R implementation of Open Refine clustering algorithms
 
 # shiny
 install.packages("shiny") 

@@ -11,15 +11,15 @@ library(furrr)     # Parallel Processing using purrr (iteration)
 # ***************************************************************************
 url <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=74"
 url_dinamic <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_grid&amp;gid=26_ed_1&amp;o_b=id&amp;o_d=ASC&amp;p=x_url&amp;rpp=125&id=74"
-PATH_OUT <- "./00_data/out/salaries/"
+PATH_OUT <- "./00_data/out/salaries/pending_process/"
 date_time <- as.character(Sys.Date()) # process execution day
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
-process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
+process_date <- as.Date(last_update, tryFormats = c("%Y-%m-%d")) - as.difftime(1, unit = "days") # data of the month ...
 process_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
 # ***********************************************
 # functions ----
-source("00_scripts/etl_functions.R")
+source("./00_scripts/etl_functions.R")
 
 get_mc_employee <- function(tableid, url) {
 	#tableid <- 2
@@ -117,6 +117,29 @@ get_mc_employee <- function(tableid, url) {
 	return(row_tbl)
 }
 
+# ***********************************************
+# scraping - ministerio de cultura 
+# ***********************************************
+
+body_html <- splash_local %>% 
+	splash_go(url) %>% 
+	splash_wait(5) %>% 
+	splash_html()
+
+# we return date 
+table_span <- body_html %>% 
+	rvest::html_nodes(xpath = '//span') 
+
+update_date <- table_span[4] %>% 
+	rvest::html_text()
+update_date <- as.POSIXlt(update_date, tz = "UTC-5")
+unclass(update_date)
+
+date_time <- as.character(Sys.Date()) # process execution day
+last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
+
+process_date <- as.Date(paste((update_date$year + 1901), (update_date$mon)+1, "01", sep="-")) - as.difftime(1, unit = "days") # data of the month ...
+process_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
 
 # ***********************************************
 # Save images
@@ -125,19 +148,13 @@ get_mc_employee <- function(tableid, url) {
 splash("localhost") %>% splash_active()
 
 # 1. capture the last update
-file_name <- paste0("./00_data/images/2020/mic/amp_last_update_", process_month,".png")
+file_name <- paste0("./00_data/images/2020/mic/mic_last_update_", process_month,".png")
 img_last <- render_png(url = url, wait = 5)
 image_write(img_last, file_name)
 
 
 # ***********************************************
-# scraping CSS web page 
-# ***********************************************
-
-body_html <- splash_local %>% 
-	splash_go(url) %>% 
-	splash_wait(5) %>% 
-	splash_html()
+# scraping page
 
 # we return all the tables on the page
 table_html <- body_html %>% 
@@ -160,20 +177,20 @@ records_tbl <- tibble(
 ) %>% 
 	mutate(
 		url = str_replace(url_dinamic, "x_url", as.character(id)),
-		shett = paste0("sheet ", as.character(id))
+		sheet = paste0("sheet ", as.character(id))
 	)
 records_tbl$url[1] <- url
 records_tbl$table_id[1] <- 4
 records_tbl
 
 time <- Sys.time()
+#plan("multiprocess")
 mic_tbl <- records_tbl %>% 
 	mutate(features = furrr::future_map2(table_id, url, get_mc_employee)) %>%  # future_map2 => with many parameters
 	unnest()
 Sys.time() - time # Time difference of  54.01361 secs
 
-mic_tbl %>% 
-	head(10)
+mic_tbl
 
 # ***********************************************
 # cleaning data

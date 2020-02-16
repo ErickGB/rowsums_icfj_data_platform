@@ -17,30 +17,19 @@ last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
 process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
 process_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
+
+
+error_tbl <- tibble(
+	error_id = 0,
+	messages = 'no_errors'
+)
 # ***********************************************
 # functions ----
 source("00_scripts/etl_functions.R")
-#get_css_employees(575)
+#get_css_employees(7)
 get_css_employees <- function(page) {
 	tryCatch({
 		id <- 1
-		print(paste0("page:", as.character(page)))
-		body_html <- splash_local %>% 
-			splash_go(url_css) %>% 
-			splash_focus("#rec_f0_bot") %>% 
-			splash_send_text(page) %>% 
-			splash_send_keys("<Return>") %>% 
-			splash_focus("#brec_bot") %>% 
-			splash_send_keys("<Return>") %>% 
-			#splash_click(x = 62, y = 760) %>% 
-			splash_wait(5) %>% 
-			splash_html() # splash_png() 
-		#body_html
-		
-		#body_html %>% 
-		#	rvest::html_nodes(css = 'input[id="rec_f0_bot"]') %>% 
-		#	rvest::html_attr("value") 
-		
 		# Data page  1...10 records
 		page_tbl <- tibble(
 			person_id = character(),
@@ -54,6 +43,27 @@ get_css_employees <- function(page) {
 			over_costs = character(),
 			total = character()
 		)
+		
+		print(paste0("page:", as.character(page)))
+		body_html <- splash_local %>% 
+			splash_go(url_css) %>% 
+			splash_wait(10)
+		
+		body_html <- body_html %>% 
+			splash_focus("#rec_f0_bot") %>% 
+			splash_send_text(page) %>% 
+			splash_send_keys("<Return>") %>% 
+			splash_focus("#brec_bot") %>% 
+			splash_send_keys("<Return>") %>% 
+			splash_wait(10) %>% 
+			#splash_click(x = 62, y = 760) %>% 
+			splash_html() # splash_png() 
+		#body_html
+		
+		#body_html %>% 
+		#	rvest::html_nodes(css = 'input[id="rec_f0_bot"]') %>% 
+		#	rvest::html_attr("value") 
+		
 		for(i in 1:10) {
 			id <- i
 			pperson_id <- body_html %>% 
@@ -114,14 +124,17 @@ get_css_employees <- function(page) {
 		}
 	},
 	error=function(error_message) {
+		htlm_error <- body_html %>% 
+			splash_html() # splash_png() 
+		
 		error_row_tbl <- tibble(
 			error_id = id,
-			message = error_message
+			messages = paste0("error ", id, ": ", error_message, " -->> with html result:", as.character(htlm_error))
 		)
-		print(paste0("error message:", error_message))
+		print(paste0("error ", id, ": ", error_message))
 		error_tbl <- rbind(error_tbl, error_row_tbl)
 		
-		temp_tbl <- tibble(
+		page_tbl <- tibble(
 			person_id = id,
 			complete_name = error_message,
 			job_title = "",
@@ -133,7 +146,7 @@ get_css_employees <- function(page) {
 			over_costs = "",
 			total = ""
 		)
-		page_tbl <- temp_tbl 
+		#page_tbl <- temp_tbl 
 	})
 	return(page_tbl)
 }
@@ -142,15 +155,11 @@ get_css_employees <- function(page) {
 
 # Table with results 1 to 3443
 final_tbl <- tibble(
-	id = 1:3455,
-	entity = rep("CSS", 1, 3455),
-	site = rep(url_css, 1, 3455)
+	id = 1:3436,
+	entity = rep("CSS", 1, 3436),
+	site = rep(url_css, 1, 3436)
 )
 
-error_tbl <- tibble(
-	error_id = character(),
-	messages = character()
-)
 
 # ***********************************************
 # Save images
@@ -182,13 +191,16 @@ body_html <- splash_local %>%
 	splash_html()
 
 time <- Sys.time()
-final_tbl <- final_tbl %>%
+plan("multiprocess")
+final_tbl_2 <- final_tbl %>%
 	mutate(
 		records = furrr::future_map(id, get_css_employees) 
 	) # %>% unnest()
 Sys.time() - time # Time difference of 6.748743 hours
+error_tbl
 
-final_expanded_tbl <- final_tbl %>% 
+
+final_expanded_tbl <- final_tbl_2 %>% 
 	unnest()
 
 # structure 
@@ -259,8 +271,8 @@ final_expanded_tbl %>%
 	glimpse()
 
 # review
-sum(final_expanded_tbl$over_costs) # 5,451,908
-sum(final_expanded_tbl$total) # 63,300,141
+sum(final_expanded_tbl$over_costs) # 5,451,908... ene 5,565,226
+sum(final_expanded_tbl$total) # 63,300,141... ene 63,943,842
 
 # write data processing
 write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_processing_dic.csv"), row.names = FALSE)
@@ -374,7 +386,7 @@ master_css_tbl <- employee_css_tbl %>%
 				 start_date, first_name, entity, update_date, sex, url, record_date, key, 
 				 over_costs, departament) 
 
-write.csv(master_css_tbl, paste0(PATH_OUT, "central_css_gov_salaries_", actual_month,".csv"), row.names = FALSE) 
+write.csv(master_css_tbl, paste0(PATH_OUT, "central_css_gov_salaries_", process_month,".csv"), row.names = FALSE) 
 
 rm(body_html, error_tbl, final_tbl)
 warnings() 

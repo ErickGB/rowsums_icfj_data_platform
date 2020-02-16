@@ -28,8 +28,6 @@ upload_file <- function(upload_tbl, project, dataset, upload_table, disposition)
 	upload_data <- insert_upload_job(project, dataset, table = upload_table, 
 		values = upload_tbl, write_disposition = disposition) #  WRITE_TRUNCATE
 	wait_for(upload_data)
-	
-	
 }
 
 set_save_log <- function(data_tbl)
@@ -99,19 +97,26 @@ set_process_data <- function(file_name) {
 			data_tbl %>% 
 				glimpse()
 			
+			print(table(data_tbl$day))
+			
 			data_tbl %>% 
 				DataExplorer::plot_missing()
 			
-			distinct_days <- data_tbl %>% 
-				distinct(date) 
+			#distinct_days <- data_tbl %>% 
+			#	distinct(day) 
+			#print(distinct_days$day)
 			
-			for(day in distinct_days$date) {
+			for(day_in in 1:31) {
 				first_tbl <- data_tbl %>% 
-					filter(date == date)
+					filter(day == day_in)
 				
 					total <- nrow(first_tbl)
-					upload_file(first_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
-					print(paste0(as.character(day),  ': uploading data ->', as.character(total), " records, done!"))
+					if(total > 0) {
+						#upload_file(first_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
+						print(paste0(as.character(day_in),  ': uploading data ->', as.character(total), " records, done!"))
+					} else {
+						print(paste0(day_in, ": we didn't find records..."))
+					}
 			}
 			
 			total_records <- nrow(data_tbl)
@@ -141,14 +146,14 @@ set_process_data <- function(file_name) {
 list_files <- base::list.files(PATH_OUT)
 data_tbl <- tibble(file_name = list_files)
 data_tbl$process_date <- Sys.Date()
-data_tbl <- data_tbl[10,]
+#data_tbl <- data_tbl[10,]
 
 httr::set_config(httr::config(http_version = 0))
 # autentication - only one time
-#bq_auth(path = "./00_scripts/rowsums-2198b8679813.json", 
-#				email = "gordon.erick@gmail.com", #gargle::gargle_oauth_email(),
-#				cache = gargle::gargle_oauth_cache(),
-#				use_oob = gargle::gargle_oob_default())
+bq_auth(path = "./00_scripts/rowsums-2198b8679813.json", 
+				email = "gordon.erick@gmail.com", #gargle::gargle_oauth_email(),
+				cache = gargle::gargle_oauth_cache(),
+				use_oob = gargle::gargle_oob_default())
 				
 drive_auth(path = "./00_scripts/rowsums-2198b8679813.json")
 project <- "rowsums"
@@ -162,7 +167,6 @@ bq_conn <-  dbConnect(bigquery(),
 )
 
 
-
 system.time(
 	# load data ----
 	data_tbl <- data_tbl %>% 
@@ -172,6 +176,8 @@ system.time(
 
 data_tbl %>% 
 	head()
+
+
 
 data_test %>% 
 	DataExplorer::plot_missing()
@@ -186,6 +192,7 @@ bq_deauth()
 #185851 valor_del_flete no trailing characters ,368.78 './00_data/out/imports/out_imports_2019-10-31.csv'
 #row             col               expected  actual                                               file
 #114771 valor_del_flete no trailing characters ,624.61 './00_data/out/imports/out_imports_2019-11-30.csv'
+#64521 valor_del_flete no trailing characters ,098.04 './00_data/out/imports/out_imports_2020-01-31.csv'
 
 
 set_process_data("out_imports_2019-12-31.csv")
@@ -252,3 +259,24 @@ where input_date > cast('2020-01-01' as date)
 #nrow(data_tbl)
 #total - nrow(data_tbl) 
 #table(data_tbl$origin, useNA = "always")
+
+PATH_OUT <- "./00_data/in/imports/"
+company_raw_tbl <- readr::read_csv(paste0(PATH_OUT, "companies_after.csv"))
+company_raw_tbl <- company_raw_tbl %>% 
+	janitor::clean_names()
+
+company_ref_tbl <- company_raw_tbl %>% 
+	mutate(
+		name_split = map_chr(key_value, .f = function(x) {str_split(x, pattern = "_")[[1]][1]}),
+		id_split = map_chr(key_value, .f = function(x) {str_split(x, pattern = "_")[[1]][2]})
+	) 
+
+company_ref_tbl %>% 
+	filter(str_detect(company_mod, "INDICAS"))
+
+# 104719 - 72887 = 34872.. ALFREDO IBANEZ_E-8-111948
+company_ref_tbl %>% 
+	count(name_split, id_split)
+
+
+write.csv(total_edited_tbl, "./00_data/out/companies_before.csv", row.names = FALSE)

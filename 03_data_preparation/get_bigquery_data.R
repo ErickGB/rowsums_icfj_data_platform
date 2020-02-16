@@ -33,7 +33,7 @@ bq_auth(path = "./00_scripts/rowsums-2198b8679813.json",
 				cache = gargle::gargle_oauth_cache(),
 				use_oob = gargle::gargle_oob_default())
 
-bigquery_conn <- bigrquery::src_bigquery(project = "rowsums", dataset = "trade")
+bigquery_conn <- bigrquery::src_bigquery(project = "rowsums", dataset = "journalists")
 # List table names
 src_tbls(bigquery_conn)
 
@@ -46,8 +46,9 @@ imports_tbl %>%
 
 # prepare query ----
 total_ref <- imports_tbl %>% 
-	group_by(category_id, date) %>% 
-	summarize(cif_total = sum(cif), count_total = n(), gross_weight = sum(gross_weight))
+	filter(year == 2016 & month < 7)
+	#group_by(company, RUC, date) %>% 
+	#summarize(cif_total = sum(cif), count_total = n(), gross_weight = sum(gross_weight))
 show_query(total_ref)
 # collect data ----
 total_tbl <- collect(total_ref) # 436.21 MB, Downloading 94,350 rows in 10 pages.
@@ -55,11 +56,21 @@ nrow(total_tbl) # 94350
 
 # join
 total_tbl <- left_join(total_tbl, categories_tbl, by = 'category_id')
+write.csv(total_tbl, paste0(PATH_OUT, "oub_imports.csv"), row.names = FALSE)
 
 # head
 total_tbl %>% 
-	arrange(desc(cif_total)) %>% 
-	head()
+	group_by(company, RUC) %>%
+	summarize(total_cif = sum(cif_total)) %>% 
+	arrange(desc(total_cif)) %>% 
+	head(20)
+
+
+
+
+
+
+
 
 plot_category("84") 
 

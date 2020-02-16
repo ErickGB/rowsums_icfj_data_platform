@@ -11,7 +11,7 @@ library(furrr)     # Parallel Processing using purrr (iteration)
 # ***************************************************************************
 url <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=35"
 url_dinamic <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_grid&amp;gid=5_ql_1&amp;o_b=id&amp;o_d=ASC&amp;p=x_url&amp;rpp=125&id=35"
-PATH_OUT <- "./00_data/out/salaries/"
+PATH_OUT <- "./00_data/out/salaries/pending_process/"
 date_time <- as.character(Sys.Date()) # process execution day
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
@@ -119,6 +119,23 @@ get_mc_employee <- function(tableid, url) {
 	return(row_tbl)
 }
 
+# ***********************************************
+# scraping - Ministerio de ambiente
+# ***********************************************
+
+body_html <- splash_local %>% 
+	splash_go(url) %>% 
+	splash_wait(5) %>% 
+	splash_html()
+
+# we return date 
+table_span <- body_html %>% 
+	rvest::html_nodes(xpath = '//span') 
+
+update_date <- table_span[4] %>% 
+	rvest::html_text()
+update_date <- as.POSIXlt(update_date, tz = "UTC-5")
+unclass(update_date)
 
 # ***********************************************
 # Save images
@@ -131,15 +148,7 @@ file_name <- paste0("./00_data/images/2020/miamb/miamb_last_update_", process_mo
 img_last <- render_png(url = url, wait = 5)
 image_write(img_last, file_name)
 
-
 # ***********************************************
-# scraping CSS web page 
-# ***********************************************
-
-body_html <- splash_local %>% 
-	splash_go(url) %>% 
-	splash_wait(5) %>% 
-	splash_html()
 
 # we return all the tables on the page
 table_html <- body_html %>% 
@@ -217,7 +226,7 @@ final_tbl %>%
 View(final_tbl)
 
 # write data processing
-write.csv(final_tbl, paste0(PATH_OUT, "miamb_employees_processing_", "november",".csv"), row.names = FALSE)
+write.csv(final_tbl, paste0(PATH_OUT, "miamb_employees_processing_", process_month,".csv"), row.names = FALSE)
 
 # ********************************************************************
 # create data for Tableau month dashboard : central_gov_salaries ----
@@ -257,5 +266,10 @@ master_tbl <- master_tbl %>%
 				 start_date, first_name, entity, update_date, sex, url, record_date, key, 
 				 over_costs, departament) 
 
-write.csv(master_tbl, paste0(PATH_OUT, "miamb_gov_salaries_", "november",".csv"), row.names = FALSE) 
+write.csv(master_tbl, paste0(PATH_OUT, "miamb_gov_salaries_", process_month,".csv"), row.names = FALSE) 
 rm(body_html, final_tbl, scrapy_tbl, records_tbl, table_html)
+
+
+
+
+
