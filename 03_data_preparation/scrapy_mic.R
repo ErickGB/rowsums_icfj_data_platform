@@ -8,6 +8,7 @@ library(splashr)   # HTML javascript functions
 library(magick)    # Simplify high-quality image processing in R
 library(purrr)     # Functional programming
 library(furrr)     # Parallel Processing using purrr (iteration)
+library(tictoc)
 # ***************************************************************************
 url <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=74"
 url_dinamic <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_grid&amp;gid=26_ed_1&amp;o_b=id&amp;o_d=ASC&amp;p=x_url&amp;rpp=125&id=74"
@@ -184,11 +185,16 @@ records_tbl$table_id[1] <- 4
 records_tbl
 
 time <- Sys.time()
-#plan("multiprocess")
+plan("multiprocess")
+tic()
 mic_tbl <- records_tbl %>% 
 	mutate(features = furrr::future_map2(table_id, url, get_mc_employee)) %>%  # future_map2 => with many parameters
 	unnest()
+toc()
 Sys.time() - time # Time difference of  54.01361 secs
+
+# Stop clusters
+future:::ClusterRegistry("stop")
 
 mic_tbl
 
@@ -263,5 +269,11 @@ master_tbl <- master_tbl %>%
 				 start_date, first_name, entity, update_date, sex, url, record_date, key, 
 				 over_costs, departament) 
 
+nrow(master_tbl)
+paste0(PATH_OUT, "mic_gov_salaries_", process_month,".csv")
+
 write.csv(master_tbl, paste0(PATH_OUT, "mic_gov_salaries_", process_month,".csv"), row.names = FALSE) 
 rm(body_html, final_tbl, master_tbl, mic_tbl, records_tbl, table_html)
+
+
+

@@ -1,0 +1,111 @@
+*******
+NOTES
+*******
+
+cat("\014")
+gc()
+# *******************************************************************************
+# 
+
+url_css <- "http://www.css.gob.pa/transparencia.html"
+# Start, active splash ----
+splash("localhost") %>% splash_active()
+
+# Open a pdf file
+file_name <- paste0("./00_data/images/css_", "dic",".png")
+a <- render_png(url = url_css, wait = 5)
+image_write(a, file_name)
+
+png() 
+splash("localhost") %>% splash_active()
+# Close the pdf file
+dev.off() 
+
+
+
+
+# load and format external data
+if(requiere_joins_files) {
+	# meduca 
+	meduca_tbl <- readr::read_csv(paste0(PATH_OUT, "meduca_nov.csv"))
+	meduca_tbl[c(20300, 20861, 31126, 38777, 42841), ] 
+	meduca_tbl[c(20300, 20861, 38777), c("GASTOS")] <- 1000
+	meduca_tbl[c(31126), c("GASTOS")] <- 3000
+	meduca_tbl[c(42841), c("GASTOS")] <- 3500
+	meduca_tbl[c(20300, 20861, 31126, 38777, 42841), ] 
+	meduca_tbl[meduca_tbl$CEDULA == "8-0252-00598", c("GASTOS")] <- 3000
+	meduca_tbl[meduca_tbl$CEDULA == "1-0015-00887", c("GASTOS")] <- 1000
+	meduca_tbl[meduca_tbl$CEDULA == "8-0163-01149", c("GASTOS")] <- 1000
+	meduca_tbl[meduca_tbl$CEDULA == "8-0195-00824", c("GASTOS")] <- 3000
+	meduca_tbl[is.na(meduca_tbl$`FECHA DE INICIO`) == TRUE, 8] <- "01/12/2019"
+	
+	meduca_tbl <- meduca_tbl %>% 
+		clean_names()
+	
+	meduca_tbl %>% 
+		glimpse()
+	
+	meduca_tbl <- meduca_tbl %>% 
+		mutate(
+			codigo = "007",
+			entidad = "Ministerio de Educación",
+			url = "http://www.contraloria.gob.pa/archivos_planillagub/Index_planillagub3.asp",
+			status = "-1", 
+			salario = as.character(salario),
+			gastos = as.character(gastos)
+		) %>% 
+		rename(
+			nombre = nombres, 
+			gasto = gastos, 
+			fecha_inicio = fecha_de_inicio
+		) %>% 
+		select(codigo, entidad, url, status, nombre, apellido, cedula, cargo, salario, gasto, estado, fecha_inicio)
+	
+	final_tbl <- final_tbl %>% 
+		filter(!(codigo == "007")) # borra a meduca 
+	final_tbl <- rbind(final_tbl, meduca_tbl) # agrega meduca 
+	
+	# CSS 
+	css_tbl <- readr::read_csv(paste0(PATH_OUT, "css_employees_processing.csv"))
+	css_tbl <- css_tbl %>% 
+		clean_names()
+	
+	css_tbl <- css_tbl %>% 
+		mutate(
+			x1 = NULL,
+			person_id = map_chr(person_id, get_people_id), # standarize "cedula"
+			codigo = "900",
+			entidad = "Caja de Seguro Social",
+			nombre =  map2_chr(complete_name, 1, get_split_value), # str_split(complete_name, pattern = " ")[[1]][1],
+			apellido = map2_chr(complete_name, 2, get_split_value), # str_split(complete_name, pattern = " ")[[1]][2],
+			entity = as.character(entity),
+			salary = as.character(salary),
+			expens = as.character(expens),
+			over_costs = as.character(over_costs), 
+			total = as.character(total),
+			start_date = as.character(start_date)
+		) %>% 
+		rename(
+			url = site, 
+			cedula = person_id,
+			cargo = job_title, 
+			salario = salary, 
+			gasto = expens, 
+			fecha_inicio = start_date,
+			estado = status
+		) %>% 
+		mutate(status = "-1") %>% 
+		select(codigo, entidad, url, status, nombre, apellido, cedula, cargo, salario, gasto, estado, fecha_inicio, departament, over_costs)
+	
+	css_tbl %>% 
+		glimpse()
+	final_tbl$departament = "unknow"
+	final_tbl$over_costs = "0"
+	
+	# procesar formato de cédula
+	#key <- "10-21-450"
+	#key <- "8-0925-00290"
+	
+	final_tbl <- rbind(final_tbl, css_tbl)
+}
+

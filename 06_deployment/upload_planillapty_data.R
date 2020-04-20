@@ -12,13 +12,25 @@ get_record <- function(id) {
 		arrange(desc(start_date)) %>% head(1)
 	return (record_tbl)
 }
-PATH_OUT <- "./00_data/out/salaries/pending_process/december/"
+
+get_css_position_name <- function(name) {
+	#name <- "SINESPACIO"
+	position <- as.integer(str_locate(name, " ") [1])
+	new_name <- name
+	if(is.na(position) == FALSE) {
+			new_name <- paste0(str_replace(substr(name, 1, position), " ", "_"), substr(name, position+1, nchar(name)))	
+	}
+	
+	return(new_name)
+}
+
+PATH_OUT <- "./00_data/out/salaries/pending_process/january/"
 date_time <- as.character(Sys.Date()) # process execution day
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
 process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
 process_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
-
+process_month
 # ********************************************************************
 # upload file 
 list_files <- list.files(PATH_OUT)
@@ -28,12 +40,81 @@ for(i in 1:length(list_files))
 	print(list_files[i])
 	temp_raw_tbl <- readr::read_csv(paste0(PATH_OUT, list_files[i]))
 	temp_raw_tbl$file_name <- as.character(list_files[i])
+	
+	source <- substr(as.character(list_files[i]), 1, 3)
+	if (source == "css") {
+		temp_raw_tbl$start_date = as.Date(temp_raw_tbl$start_date, tryFormats = c("%Y-%m-%d"))
+		temp_raw_tbl <- temp_raw_tbl %>% 
+			mutate(
+				position = map_chr(position, get_css_position_name)
+			)
+		
+		temp_raw_tbl <- temp_raw_tbl %>% 
+			mutate(position = ifelse(position == "TECNOLOGO_EN RADIOLOG E IMÃ\u0083Â\u0081GENES I II", 
+																"TECNOLOGO_EN RADIOLOG E IMAGENES I I", position))
+		
+		temp_raw_tbl <- temp_raw_tbl %>% 
+			mutate(position = ifelse(position == "CONDUCTOR_DE VEHICULO II", 
+																"CONDUCTOR_DE VEHICULO  II", position))
+		
+		temp_raw_tbl <- temp_raw_tbl %>% 
+			mutate(position = ifelse(position == "CONDUCTOR_DE VEHICULO I", 
+																"CONDUCTOR_DE VEHICULO   I", position))
+		
+		temp_raw_tbl <- temp_raw_tbl %>% 
+			mutate(position = ifelse(position == "ALBA√ëIL I", 
+																"ALBAQIL_I", position))
+		
+		temp_raw_tbl <- temp_raw_tbl %>% 
+			mutate(position = ifelse(position == '"CORREDOR_DE PRIMA DE ANTIGÃ\u0083Â\u009cEDAD"', 
+															 "CORREDOR_DE PRIMA DE ANTIGUEDAD", position))
+		
+		
+	}
+	if (source == "cgr") {
+		temp_raw_tbl$start_date = as.Date(temp_raw_tbl$start_date, tryFormats = c("%d/%m/%Y"))
+	}
+	if (source == "mic") {
+		temp_raw_tbl$start_date = as.Date(temp_raw_tbl$start_date, tryFormats = c("%d-%m-%y"))
+	}
+	if (source == "mia") {
+		temp_raw_tbl$start_date = as.Date(temp_raw_tbl$start_date, tryFormats = c("%d/%m/%Y"))
+	}
+	
 	if(i == 1) {
 		master_tbl <- temp_raw_tbl
 	}	else {
 		master_tbl <- rbind(master_tbl, temp_raw_tbl)
 	}
 }
+
+
+
+master_tbl <- master_tbl %>% 
+	mutate(position = ifelse(substr(position, 1, 25) == "CORREDOR_DE PRIMA DE ANTI", 
+													 "CORREDOR_DE PRIMA DE ANTIGUEDAD", position))
+
+master_tbl <- master_tbl %>% 
+	mutate(position = ifelse(position == "ALBAÑIL I", 
+													 "ALBAQIL_I", position))
+
+master_tbl <- master_tbl %>% 
+	mutate(position = ifelse(position == "ALBAÑIL", 
+													 "ALBANIL", position))
+
+master_tbl <- master_tbl %>% 
+	mutate(position = ifelse(position == "ALBAÃ\u0083Â\u0091IL_JEFE", 
+													 "ALBANIL_JEFE", position))
+
+master_tbl <- master_tbl %>% 
+	mutate(position = ifelse(position == "JEFA DE COOÉRACIÓN TECNICA", 
+													 "JEFA DE COORDINACIÓN TECNICA", position))
+
+master_tbl <- master_tbl %>% 
+	mutate(position = ifelse(position == "DISEÑADOR GRAFICO", 
+													 "DISEÑADOR GRÁFICO", position))
+
+
 
 # date_processed = fecha de registro del dato.. debería ser record_date
 # record_date = fecha en la que se proceso... debería ser processed_date
@@ -44,13 +125,15 @@ for(i in 1:length(list_files))
 master_tbl %>% 
 	glimpse()
 
+table(master_tbl$record_date, master_tbl$update_date)
 
 master_tbl <- master_tbl %>% 
-	filter(is.null(start_date) == FALSE) %>% 
+	#filter(is.null(start_date) == FALSE) %>% 
 	mutate(
-		update_date = as.Date('2019-12-17', tryFormat = '%Y-%m-%d'), 
-		record_date = as.Date('2019-12-31', tryFormat = '%Y-%m-%d'), 
-		status = toupper(str_trim(status, side = "both"))
+		update_date = as.Date('2019-02-16', tryFormat = '%Y-%m-%d'), 
+		record_date = as.Date('2020-01-31', tryFormat = '%Y-%m-%d')
+		#status = toupper(str_trim(status, side = "both")),
+		#position = toupper(str_trim(position, side = "both")),
 				 )
 
 # master_tbl <- readr::read_csv(paste0("./00_data/out/salaries/", "miamb_employees_processing_november.csv"))
@@ -58,51 +141,29 @@ master_tbl <- master_tbl %>%
 #cgr_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_", process_month, ".csv"))
 #mic_tbl <- readr::read_csv(paste0(PATH_OUT, "mic_gov_salaries_", process_month, ".csv"))
 #meduca_tbl <- readr::read_csv(paste0(PATH_OUT, "meduca_gov_salaries_", process_month, ".csv"))
-# 184184 - 195224
+# 184184 - 195224.. 180720
 nrow(master_tbl)
 
-master_tbl %>% 
-	glimpse()
 
 master_tbl %>% 
 	DataExplorer::plot_missing()
-
-master_tbl <- master_tbl %>% 
-	mutate(
-		last_name = ifelse(is.na(last_name), " ", last_name),
-		start_date = as.character(start_date),
-		start_date = ifelse(is.na(start_date), '1920-12-01', start_date)
-	) %>%
-	mutate(
-		start_date = as.Date(start_date, tryFormat = '%Y-%m-%d') 
-	)
 
 master_tbl %>% 
 	mutate(month = lubridate::month(update_date)) %>% 
 	group_by(month, file_name) %>% 
 	summarize(total = n(), max_date = max(start_date))
 
-# temporally out MEDUCA
-master_tbl <- master_tbl %>% 
-	filter(code != "007")
-
-master_tbl %>%  
-	filter(is.na(start_date))
-
-# A tibble: 122,901 x 19
-table(master_tbl$url, master_tbl$update_date)
-
-
-View(master_tbl %>% 
-	group_by(code, entity) %>% 
-	summarize(total = sum(total_income), count = n()) %>% 
-	arrange(desc(count)))
-
-View( master_tbl[34540:34595, ] ) %>% 
-	glimpse()
-
 master_tbl %>% 
-	glimpse()
+	mutate(month = lubridate::month(update_date)) %>% 
+	group_by(month, entity) %>% 
+	summarize(total = n(), max_date = max(start_date, na.rm = TRUE)) %>% 
+	arrange(desc(total))
+
+
+# temporally out MEDUCA
+#master_tbl <- master_tbl %>% 
+#	filter(code != "007")
+
  
 # ********************************************************************
 # googledrive authentication
@@ -140,55 +201,42 @@ cgs_tbl <- cgs_tbl %>%
 	select(employee_salary_id, names)
 min(cgs_tbl$employee_salary_id) - count_result # 1 it's ok
 
-
-View(cgs_tbl[c(34542:34543),])
-cgs_tbl[c(34540:34545),] %>% 
-	glimpse()
+master_tbl[178780:178782, c("start_date", "record_date", "update_date", "entity", "file_name")] %>% glimpse()
+master_tbl[178781, c("start_date")] <- as.Date("2019-02-01", tryFormats = c('%Y-%m-%d'))
 
 # 1: Load principal table: staging_central_gov_salaries
 tryCatch(
 	{
-		cgs_tbl_2 <- cgs_tbl[c(34596),]
 		job <- insert_upload_job("rowsums", "data_test", table = "staging_central_gov_salaries", 
-														 values = cgs_tbl_2, write_disposition = "WRITE_TRUNCATE")
+														 values = cgs_tbl, write_disposition = "WRITE_TRUNCATE")
 		status <- wait_for(job)
 	}, # end try
 error=function(error_message) {
 	print(error_message)
 }) 
 
-
-cgs_tbl <- master_tbl
+table(cgs_tbl$status)
+cgs_tbl <- master_tbl # 180,720
 cgs_tbl$employee_salary_id <- NULL
 cgs_tbl$file_name <- NULL
 job <- insert_upload_job("rowsums", "journalists", table = "central_gov_salaries", 
 												 values = cgs_tbl, write_disposition = "WRITE_TRUNCATE")
 wait_for(job)
 
+
+
 # *****************
-# JOBS : new jobs? ADD MANUALLY    :(
+# JOBS : new jobs? ADD MANUALLY    :(     .. code != '900' and 
 sql <- "SELECT entity, upper(position) position, count(*) as total, avg(salary) salary 
-FROM data_test.staging_central_gov_salaries where code != '900' and position not in (
+FROM data_test.staging_central_gov_salaries where position not in (
   SELECT job_title FROM journalists.d_jobs
 ) GROUP BY entity, position"
 query_results <- query_exec(sql, project = project, useLegacySql = FALSE)
 as_tibble(query_results) %>% 
 	arrange(desc(salary))
-write.csv(as_tibble(query_results), paste0(PATH_OUT, "new_jobs", process_month,".csv"))
-
-
-
-# *****************************
-# JOBS : new jobs? ADD MANUALLY    :(
-sql <- "SELECT position, count(*) as total, avg(salary) salary 
-FROM data_test.staging_central_gov_salaries where code = '900' and position not in (
-  SELECT job_title FROM journalists.d_jobs
-) GROUP BY position"
-query_results <- query_exec(sql, project = project, useLegacySql = FALSE)
-as_tibble(query_results) %>% 
-	arrange(desc(total))
-write.csv(as_tibble(query_results), paste0(PATH_OUT, "new_jobs_css", actual_month,".csv"))
-
+write.csv(as_tibble(query_results) %>% 
+						arrange(desc(salary)), 
+					paste0(PATH_OUT, "new_jobs_", process_month,".csv"), row.names = FALSE)
 
 
 sql <- "SELECT max(jobs_id) max FROM journalists.d_jobs"
@@ -196,9 +244,10 @@ count_result <- query_exec(sql, project = project, useLegacySql = FALSE)
 count_result$max + 1
 
 # add jobs manually
-jobs_tbl <- readr::read_csv(paste0(PATH_OUT, "out_final_jobs.csv"))
+jobs_tbl <- readr::read_csv2(paste0(PATH_OUT, "out_final_jobs.csv"))
 jobs_tbl$jobs_id <- as.integer(jobs_tbl$jobs_id)
-jobs_tbl[1750:1753,]
+jobs_tbl$cluster <- as.integer(jobs_tbl$cluster)
+jobs_tbl[2388:2390,]
 nrow(jobs_tbl)
 
 job <- insert_upload_job("rowsums", "journalists", table = "d_jobs", 
@@ -213,9 +262,9 @@ query_results <- query_exec(sql, project = project, useLegacySql = FALSE)
 id <- query_results$count + 1
 
 # new people
-sql <- "SELECT person_id FROM data_test.staging_central_gov_salaries where person_id not in (select  person_id from journalists.d_people)"
+sql <- "SELECT person_id, count(*) count_persons FROM data_test.staging_central_gov_salaries where person_id not in (select person_id from journalists.d_people) group by person_id"
 new_people_tbl <- query_exec(sql, project = project, useLegacySql = FALSE)
-new_people_tbl
+new_people_tbl$count_persons <- NULL 
 
 # insert new people
 people_tbl <- bind_rows(purrr::map_df(new_people_tbl$person_id, .f = function(x) {get_record(x)}))
@@ -235,6 +284,7 @@ people_tbl$people_id <- seq(from = id, to = final ,by = 1)
 people_tbl$people_id <- as.integer(people_tbl$people_id)
 people_tbl$record_date <- last_update
 people_tbl <- people_tbl %>% 
+	mutate(record_date = as.Date(record_date, tryFormats = c('%Y-%m-%d'))) %>% 
 	rename(fist_name = complete_name) %>% 
 	select(people_id, person_id, fist_name, last_name, start_date, sex, record_date)
 #people_tbl$people_id <- as.character(people_tbl$people_id)
@@ -243,6 +293,11 @@ nrow(people_tbl)
 people_tbl %>% 
 	glimpse()
 min(people_tbl$people_id)
+
+# sin repetidos
+people_tbl %>% 
+	count(person_id) %>% 
+	filter(n > 1)
 
 # add data to final tables 
 job <- insert_upload_job("rowsums", "journalists", table = "d_people", 
@@ -285,12 +340,12 @@ c.url, c.first_name, c.last_name,
 j. jobs_id , j.job_title, j.job_position, 
 c.salary, c.expenses, c. total_income , c.status, c.start_date, 
 cast(d.record_id as INT64) record_id, d. processed_date , d.record_date, 
-c.sex, c.key,concat(c.person_id, " ", j.job_title) as key1
-FROM data_test.staging_central_gov_salaries c
+c.sex, c.key,concat(c.person_id, " ", j.job_title) as key1, over_costs , departament
+FROM data_test.staging_central_gov_salaries c 
 INNER JOIN journalists.d_people p ON p.person_id = c.person_id 
-INNER JOIN journalists.d_entity e ON e.entity_code = c.code  
+INNER JOIN journalists.d_entity e ON e.entity_code = c.code 
 INNER JOIN journalists.d_jobs j ON j.job_title = c.position 
-INNER JOIN journalists.d_date_upload d ON d.record_date = c.record_date"
+INNER JOIN journalists.d_date_upload d ON d.processed_date = c.record_date;"
 employee_records <- query_exec(sql, project = project, useLegacySql = FALSE)
 
 #GENERATE_UUID()

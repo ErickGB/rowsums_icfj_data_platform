@@ -10,8 +10,8 @@ library(purrr)     # Functional programming
 library(furrr)     # Parallel Processing using purrr (iteration)
 # ***************************************************************************
 url_css <- "http://www.css.gob.pa/p/grid_defensoria/"
-url_last_update <- "http://www.css.gob.pa/transparencia.html"
-PATH_OUT <- "./00_data/out/salaries/"
+url_last_update <- "http://web.css.gob.pa/transparencia/nodo-de-transparencia/" #"http://www.css.gob.pa/transparencia.html"
+PATH_OUT <- "./00_data/out/salaries/pending_process/"
 date_time <- as.character(Sys.Date()) # process execution day
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
@@ -191,7 +191,7 @@ body_html <- splash_local %>%
 	splash_html()
 
 time <- Sys.time()
-plan("multiprocess")
+#plan("multiprocess")
 final_tbl_2 <- final_tbl %>%
 	mutate(
 		records = furrr::future_map(id, get_css_employees) 
@@ -266,6 +266,31 @@ final_expanded_tbl <- final_expanded_tbl %>%
 final_expanded_tbl <- final_expanded_tbl %>% 
 	mutate(job_title = ifelse(job_title == "ALBAÃÂIL", 
 												"ALBANIL", job_title))
+
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == "ALBA√ëIL I", 
+														"ALBANIL I", job_title))
+
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == "ALBA√ëIL", 
+														"ALBANIL", job_title))
+
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == "TECNOLOGO_EN RADIOLOG E IM√É¬É√Ç¬ÅGENES I II", 
+														"TECNOLOGO_EN RADIOLOG E IMAGENES I I", job_title))
+
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == "CORREDOR_DE PRIMA DE ANTIG√É¬É√Ç¬úEDAD", 
+														"CORREDOR_DE PRIMA DE ANTIGUEDAD", job_title))
+
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == "CONDUCTOR_DE VEHICULO II", 
+														"CONDUCTOR_DE VEHICULO  II", job_title))
+
+final_expanded_tbl <- final_expanded_tbl %>% 
+	mutate(job_title = ifelse(job_title == "CONDUCTOR_DE VEHICULO I", 
+														"CONDUCTOR_DE VEHICULO   I", job_title))
+
 # final processing
 final_expanded_tbl %>%
 	glimpse()
@@ -367,6 +392,7 @@ employee_css_tbl <- employee_css_tbl %>%
 
 employee_css_tbl %>% 
 	glimpse()
+sum(employee_css_tbl$over_costs) # 5,592,724
 
 # write data processing
 write.csv(employee_css_tbl, paste0(PATH_OUT, "css_employees_processing_", process_month,".csv"))
@@ -387,7 +413,7 @@ master_css_tbl <- employee_css_tbl %>%
 				 over_costs, departament) 
 
 write.csv(master_css_tbl, paste0(PATH_OUT, "central_css_gov_salaries_", process_month,".csv"), row.names = FALSE) 
-
+print(sum(master_css_tbl$over_costs, na.rm = TRUE))
 rm(body_html, error_tbl, final_tbl)
 warnings() 
 

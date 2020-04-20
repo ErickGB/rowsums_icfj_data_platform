@@ -112,7 +112,7 @@ set_process_data <- function(file_name) {
 				
 					total <- nrow(first_tbl)
 					if(total > 0) {
-						#upload_file(first_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
+						upload_file(first_tbl, "rowsums", "data_test", "staging_imports", "WRITE_APPEND")
 						print(paste0(as.character(day_in),  ': uploading data ->', as.character(total), " records, done!"))
 					} else {
 						print(paste0(day_in, ": we didn't find records..."))
@@ -142,10 +142,13 @@ set_process_data <- function(file_name) {
 # ********************************************************************
 # load data ----
 
-# read file ----
+# read file ----  "./00_data/out/imports/out_imports_2020-01-31.csv"
 list_files <- base::list.files(PATH_OUT)
 data_tbl <- tibble(file_name = list_files)
-data_tbl$process_date <- Sys.Date()
+date_time <- as.character(Sys.Date()) # process execution day
+last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
+
+data_tbl$process_date <- as.Date(last_update, tryFormats = c('%Y-%m-%d')) #Sys.Date()
 #data_tbl <- data_tbl[10,]
 
 httr::set_config(httr::config(http_version = 0))
@@ -177,11 +180,6 @@ system.time(
 data_tbl %>% 
 	head()
 
-
-
-data_test %>% 
-	DataExplorer::plot_missing()
-
 bq_deauth()
 
 
@@ -193,10 +191,6 @@ bq_deauth()
 #row             col               expected  actual                                               file
 #114771 valor_del_flete no trailing characters ,624.61 './00_data/out/imports/out_imports_2019-11-30.csv'
 #64521 valor_del_flete no trailing characters ,098.04 './00_data/out/imports/out_imports_2020-01-31.csv'
-
-
-set_process_data("out_imports_2019-12-31.csv")
-
 
 # git config --global user.email "gordon.erick@gmail.com"
 # git config --global user.name "ErickGB"
@@ -223,6 +217,22 @@ from data_test.staging_imports im
 inner join trade.dim_category ca on ca.sub_category_code = substr(tariff_fraction, 1, 2)
 inner join trade.dim_country co on co.alpha_2 = country_origin_code 
 where input_date > cast('2020-01-01' as date) 
+# 126554 - 126554 - 126554
+
+insert into trade.fact_agg_product
+select co. alpha_2 , co.name, region, sub_region, latitude, longitude, company, RUC, category_code, 
+sub_category_code, category, sub_category, port, 
+count(*), sum(total_to_pay), sum(cif), sum(freight_value), sum(insurance), 
+sum(fob), sum(quantity), sum(gross_weight), sum(net_weight), 0, 0, 
+month, year, year_month_date, year_date
+from trade.fact_import fi
+inner join trade.dim_category ca on  fi.category_id = ca.category_id
+inner join trade.dim_country co on  fi.country_id = co.country_id
+where record_id = 4
+group by co. alpha_2 , co.name, region, sub_region, latitude, longitude, company, RUC, category_code, 
+sub_category_code, category, sub_category,month, year, year_month_date, year_date 
+
+
 
 
 

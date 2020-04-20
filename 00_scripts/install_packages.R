@@ -5,6 +5,10 @@ install.packages("DataExplorer")
 install.packages("janitor")
 install.packages("refinr") # Cluster and merge similar char values: an R implementation of Open Refine clustering algorithms
 
+
+install.packages("EpiModel")
+install.packages(c("earlyR", "incidence"))
+
 # shiny
 install.packages("shiny") 
 install.packages("shinydashboard") # dashboard structure
@@ -39,6 +43,8 @@ install.packages("DALEX")      # Machine Learning models are widely used and hav
 install.packages("VGAM")
 install.packages("vtreat")
 
+install.packages("tictoc")     # Functions for timing R scripts, as well as implementations of Stack and List structures.
+
 install.packages("unpivotr")
 install.packages("tidyxl")
 devtools::install_github("nacnudus/smungs") # excel treatment library - data wrangling
@@ -48,6 +54,10 @@ install.packages("bigrquery")
 install.packages("googleCloudStorageR")
 install.packages("googledrive")
 install.packages("gargle")
+
+install.packages("Rserve")
+install.packages("mvoutlier") #outliers
+
 
 # Geo and plots 
 install.packages("OpenStreetMap")
@@ -130,3 +140,15 @@ devtools::install_github("wch/harbor")
 devtools::install_github("hrbrmstr/splashr") 
 install.packages("magick")
 
+
+
+install.packages("distill")
+install.packages("hrbrthemes")
+install.packages("sodium")
+
+remotes::install_github("reconhub/epicontacts")
+remotes::install_github("reconhub/linelist")
+remotes::install_github("reconhub/earlyR")
+remotes::install_github("reconhub/projections")
+
+install.packages("gt")

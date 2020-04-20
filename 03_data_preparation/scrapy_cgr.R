@@ -15,10 +15,15 @@ library(bigrquery)
 # *******************************************************************************
 PATH_OUT <- "./00_data/out/salaries/"    
 PATH_PROCESS_OUT <- "./00_data/out/salaries/pending_process/"    
-date_time <- as.character(Sys.Date())    
-actual_month <- "ene"                    # 
-last_update <- as.Date('2020-01-10')     #
+
+date_time <- as.character(Sys.Date()) # process execution day
+last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
+process_date <- as.Date(last_update, tryFormats = c("%Y-%m-%d")) - as.difftime(1, unit = "days") # data of the month ...
+actual_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
+
 requiere_joins_files <- TRUE             # requiere row bindws with other extraccion
+
+
 # *******************************************************************************
 # Load supplementary data ----
 names_tbl <- readr::read_csv("./00_data/in/names/namesComplete2016.csv")
@@ -270,7 +275,7 @@ update <-stringr::str_trim(update, side = "left")
 #get_employees('007', '1')
 
 time_1 <- system.time()
-plan("multiprocess")
+#plan("multiprocess")
 codes <- c('007', '018', '012', '000', '045')
 codes <- c('000')
 employee_salaries_tbl <- entities_tbl %>%
@@ -404,6 +409,11 @@ final_tbl <- final_tbl %>%
 final_tbl %>% 
 	glimpse()
 
+
+final_tbl %>% 
+	count(entidad) %>% 
+	arrange(desc(n))
+
 # ********************************************************************
 # create data for Tableau month dashboard : central_gov_salaries ----
 master_tbl <- final_tbl %>% 
@@ -428,10 +438,13 @@ master_tbl %>%
 View(master_tbl)
 
 nrow(master_tbl)
+paste0(PATH_PROCESS_OUT, "central_gov_salaries_", actual_month,".csv")
 write.csv(master_tbl, paste0(PATH_PROCESS_OUT, "central_gov_salaries_", actual_month,".csv"), row.names = FALSE) 
 table(master_tbl$update_date)
+max(master_tbl$start_date)
 
-
+# 2020-03-01 
+#     149466 
 
 # ********************************************************************
 # END 

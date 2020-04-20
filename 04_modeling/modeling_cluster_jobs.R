@@ -34,19 +34,16 @@ source("./00_scripts/base_functions.R")
 # *******************************************************************************
 # load data ----
 # gcp authentication
-drive_auth(path = "./00_scripts/rowsums-2198b8679813.json")
-project <- "rowsums"
+httr::set_config(httr::config(http_version = 0))
+# autentication - only one time
+bq_auth(path = "./00_scripts/rowsums-2198b8679813.json", 
+				email = "gordon.erick@gmail.com", #gargle::gargle_oauth_email(),
+				cache = gargle::gargle_oauth_cache(),
+				use_oob = gargle::gargle_oob_default())
 
-projectid<-'rowsums'
-datasetid<-'journalists'
-bq_conn <-  dbConnect(bigquery(), 
-                            project = projectid,
-                            dataset = datasetid, 
-                            use_legacy_sql = FALSE
-                      )
-
-bigrquery::dbListTables(bq_conn) # List all the tables in BigQuery data set
-data_raw_tbl <- dplyr::tbl(bq_conn, "f_employee_salary") # connects to a table but no load data in memory
+bigquery_conn <- bigrquery::src_bigquery(project = "rowsums", dataset = "journalists")
+bigrquery::dbListTables(bigquery_conn) # List all the tables in BigQuery data set
+data_raw_tbl <- dplyr::tbl(bigquery_conn, "f_employee_salary") # connects to a table but no load data in memory
 class(data_raw_tbl)
 data_raw_tbl %>% 
 	glimpse()
@@ -59,20 +56,23 @@ jobs_time_tbl <- data_raw_tbl %>%
 	summarize(count = n(), salary = mean(total, na.rm = TRUE), years = round(mean(years, na.rm = TRUE), digits=0)) %>% 
 	arrange(desc(count)) %>% 
 	ungroup() 
+show_query(jobs_time_tbl)
+
+
 jobs_time_tbl <- jobs_time_tbl %>% 
 	collect() 
 
-jobs_tbl <- jobs_time_tbl %>% 
+jobs_summary_tbl <- jobs_time_tbl %>% 
 	group_by(job_id, job_title, job_position) %>% 
 	summarize(count = mean(count), mean_salary = mean(salary, na.rm = TRUE), mean_years = round(mean(years, na.rm = TRUE), digits=0)) 
 	
 
-jobs_tbl %>% 
+jobs_summary_tbl %>% 
 	head(20) %>% 
 ggplot(aes(x = job_title, y = count)) + geom_bar(stat = "identity") + coord_flip() + labs(y =
-       "No of employees ", x = "Employee Position") + geom_text(aes(label = salary),size = 3)
+       "No of employees ", x = "Employee Position") + geom_text(aes(label = mean_salary),size = 3)
 
-jobs_summary_tbl %>% 
+jobs_tbl %>% 
 	glimpse()
 
 hist(jobs_summary_tbl$count)
@@ -137,19 +137,23 @@ outliers_tbl <- jobs_summary_tbl %>%
 # no outliers
 train_tbl <- jobs_summary_tbl %>% 
 	filter(outlier != 1) %>% 
-	select(job_id, job_title, count, mean_salary) 
+	select(job_id, job_title, count, mean_salary, mean_years) 
 job_id <- train_tbl$job_id
 train_tbl$job_id <- NULL 
 ncol <- ncol(train_tbl)
 
 
-col_skew_names <- c("count", "mean_salary")
-rec_obj <- recipe(~ ., data = train_tbl[, 2:ncol]) %>%
+hist(train_tbl$count)
+hist(train_tbl$mean_salary)
+hist(train_tbl$mean_years)
+
+col_skew_names <- c("count", "mean_salary", "mean_years") # 
+rec_obj <- recipe(~ ., data = train_tbl[, 2: (ncol - 1)]) %>%
 		step_YeoJohnson(col_skew_names) %>% 
 	  #step_meanimpute(impute_cols) %>% 
 		#step_rm(remove_col) %>% 
-	  #step_center(all_numeric()) %>%  
-	  #step_scale(all_numeric()) %>% 
+	  #step_center("mean_years") %>%  # all_numeric()
+	  #step_scale("mean_years") %>% 
 	  #step_zv(all_predictors()) %>% 
 	  #step_dummy("years") %>%
     prep()
@@ -225,7 +229,7 @@ for (i in 1:10000){ # 100000
 	  if (fit[i] < min(fit[1:(i-1)])){
 	    clusters <- class_250}
   }
-  print(paste("finish run", i, ", tot.withinss: ", fit[i], sep=" "))
+  #print(paste("finish run", i, ", tot.withinss: ", fit[i], sep=" "))
 }
 print(paste("finish run", i, ", tot.withinss: ", clusters$tot.withinss, sep=" "))
 
@@ -236,6 +240,13 @@ fviz_silhouette(kms_res, palette = "jco", ggtheme = theme_classic())
 # Visualize k-means clusters
 fviz_cluster(kms_res, geom = "point", ellipse.type = "norm",
              palette = "jco", ggtheme = theme_minimal())
+
+
+#cluster size ave.sil.width
+#1       1  896          0.64
+#2       2  613          0.36
+#3       3  584          0.51
+#4       4  623          0.43
 
  
 train_tbl$cluster <- as.factor(clusters$cluster)     
@@ -252,9 +263,6 @@ jobs_summary_tbl <- left_join(jobs_summary_tbl, train_complete_tbl, by = "job_id
 table(jobs_summary_tbl$cluster, useNA = "always")
 write.csv(jobs_summary_tbl, paste0(PATH_OUT, "job_summary_outlier.csv"), row.names = FALSE)
 write.csv(jobs_summary_tbl[, c("job_id", "cluster")], paste0(PATH_OUT, "out_cluster_outlier.csv"), row.names = FALSE)
-
-train_tbl %>% 
-	filter(jobs_id %in% c(967, 970))
 
 # *********************************************
 # load cluster

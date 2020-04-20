@@ -420,6 +420,14 @@ sub_category_code, category, sub_category,month, year, year_month_date, year_dat
 
 
 
+select person_id cedula, entity_name entidad, first_name nombre, last_name apellido, job_title cargo, 
+       salary salario, expenses gastos, total, start_date fecha_inicio, sex sexo_estimado_x_nombre, 
+       record_date as process_date, date_processed as record_date
+  from journalists.f_employee_salary 
+ where record_id in (9, 10) 
+   and entity_id in (14)
+ order by record_id, entity_name asc 
+
 
 
 

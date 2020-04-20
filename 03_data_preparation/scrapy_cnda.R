@@ -8,17 +8,25 @@ library(V8)				 # call javascript functions
 library(furrr)     # Parallel Processing using purrr (iteration)
 library(fs)        # Working with File System
 library(xopen)     # Quickly opening URLs
+library(magick)    # Simplify high-quality image processing in R
+library(splashr)   # HTML javascript functions
 library(XML)
 library(stringr) 
 library(DataExplorer)
 
 # ***********************************************
-PATH_OUT <- "./00_data/out/imports/"
-date_start <- "2020-01-01"
-date_end <- "2020-01-31"
+PATH_OUT <- "./00_data/out/imports/" 
+date_start <- "2020-03-01"
+date_end <- "2020-03-31"
 record_type <- "I" # I = Imports, E = exports 
-page_record <- ifelse(record_type == "I", 50000, 1000)
-date_time <- as.character(Sys.Date())
+page_record <- ifelse(record_type == "I", 5000, 1000)
+
+date_time <- as.character(Sys.Date()) # process execution day
+last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
+process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
+process_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
+
+
 source("./00_scripts/aduanas_records.R")
 
 #Mesa de Ayuda Procesos
@@ -27,10 +35,20 @@ source("./00_scripts/aduanas_records.R")
 #Mesa de Ayuda SIGA
 #Teléfono: 506 - 6200
 
+# 1. print capture the last update
+url <- paste0("http://190.34.178.196/aduana/SIGA_SICE/index.php?calendario_desde=", date_start,"&calendario_hasta=", date_start,"&ruc=&importador=&tipo_oper=", record_type,"&puerto=&arancel=&mercancia=&cantresxpag=",as.character(10),"&pag=formprin&Accion_Consultar=Consultar")
+file_name <- paste0("./00_data/images/2020/aduana/aduana_last_update_", process_month,".png")
+img_last <- render_png(url = url, wait = 5)
+image_write(img_last, file_name)
+
 
 # exportación: http://190.34.178.196/aduana/SIGA_SICE/index.php?calendario_desde=2019-01-01&calendario_hasta=2019-05-16&ruc=&importador=&tipo_oper=E&puerto=&arancel=&mercancia=&cantresxpag=99&pag=formprin&Accion_Consultar=Consultar
 url <- paste0("http://190.34.178.196/aduana/SIGA_SICE/index.php?calendario_desde=", date_start,"&calendario_hasta=", date_end,"&ruc=&importador=&tipo_oper=", record_type,"&puerto=&arancel=&mercancia=&cantresxpag=",as.character(page_record),"&pag=formprin&Accion_Consultar=Consultar")
 session <- html_session(url)
+
+
+
+
 
 # number of records
 record_text <- session %>% 
@@ -60,7 +78,7 @@ records_tbl
 # srapy data (it's slowww, large number of records have been downloaded)
 time <- Sys.time()
 time
-plan("multiprocess")
+#plan("multiprocess")
 	out <- tryCatch(
         {
 records_tbl <- records_tbl %>% 
@@ -72,7 +90,8 @@ Sys.time() - time
 records_tbl <- records_tbl %>% 
   unnest()
 nrow(records_tbl)
-
+# Stop clusters
+future:::ClusterRegistry("stop")
 
 records_tbl %>% 
 	glimpse()
