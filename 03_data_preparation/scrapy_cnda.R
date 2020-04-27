@@ -16,9 +16,10 @@ library(DataExplorer)
 
 # ***********************************************
 PATH_OUT <- "./00_data/out/imports/" 
-date_start <- "2020-03-01"
+date_start <- "2020-01-01"
 date_end <- "2020-03-31"
-record_type <- "I" # I = Imports, E = exports 
+record_type <- "E" # I = Imports, E = exports 
+file_type <- ifelse(record_type == "I", "imports", "exports")
 page_record <- ifelse(record_type == "I", 5000, 1000)
 
 date_time <- as.character(Sys.Date()) # process execution day
@@ -91,13 +92,15 @@ records_tbl <- records_tbl %>%
   unnest()
 nrow(records_tbl)
 # Stop clusters
-future:::ClusterRegistry("stop")
+#future:::ClusterRegistry("stop")
 
 records_tbl %>% 
 	glimpse()
 
 records_tbl %>% 
 	head()
+
+print(records_tbl$link[1])
 
 records_tbl %>% 
 	DataExplorer::plot_missing()
@@ -108,10 +111,10 @@ record_text
 table(substr(records_tbl$peso_neto, nchar(records_tbl$peso_neto) - 1, nchar(records_tbl$peso_neto)))
 
 # save montly file 
+paste0(PATH_OUT, "out_", file_type, "_", date_end,".csv")
 write.csv(records_tbl, #fileEncoding = "UTF-8",
-	paste0(PATH_OUT, "out_imports_", date_end,".csv"), row.names = FALSE)
+	paste0(PATH_OUT, "out_", file_type, "_", date_end,".csv"), row.names = FALSE)
 
-paste0(PATH_OUT, "out_imports_", date_end,".csv")
 
 rm(records_tbl) # data tables
 rm(get_count, get_all_products) # functions
