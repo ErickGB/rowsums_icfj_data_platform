@@ -16,8 +16,8 @@ library(DataExplorer)
 
 # ***********************************************
 PATH_OUT <- "./00_data/out/imports/" 
-date_start <- "2020-01-01"
-date_end <- "2020-03-31"
+date_start <- "2018-01-01"
+date_end <- "2018-06-30"
 record_type <- "E" # I = Imports, E = exports 
 file_type <- ifelse(record_type == "I", "imports", "exports")
 page_record <- ifelse(record_type == "I", 5000, 1000)

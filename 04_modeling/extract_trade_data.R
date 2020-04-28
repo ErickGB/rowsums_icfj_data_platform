@@ -21,7 +21,7 @@ codes_search <- c(
 "0303.13.00", #
 "0304.41.00", #
 "0304.81.00", #
-"0305.44.00"
+"0305.41.00"
 )
 
 # ********************************************************************
@@ -38,6 +38,19 @@ src_tbls(bigquery_conn)
 
 # 
 trade_tbl <- tbl(bigquery_conn, "trade.fact_import")
+country_tbl <- tbl(bigquery_conn, "trade.dim_country")
+
+# **********************************************
+# country
+country_tbl <- collect(country_tbl)
+country_tbl %>% 
+	glimpse()
+
+country_tbl <- country_tbl %>% 
+	dplyr::select(alpha_2, name, region, sub_region) %>% 
+	rename(country_origin_code = alpha_2) %>% 
+	ungroup()
+
 
 # **********************************************
 # companies
@@ -46,6 +59,7 @@ company_tbl <- trade_tbl %>%
 show_query(company_tbl)
 company_tbl <- collect(company_tbl)
 nrow(company_tbl) # 79,985
+
 
 
 # get_company_name('121-261-33279')
@@ -84,8 +98,10 @@ company_tbl <- company_tbl %>%
 company_final_tbl <- company_tbl %>% 
 	ungroup() %>% 
 	count(ruc, company_name) %>% 
+	arrange(desc(n)) %>% 
 	mutate(ruc_id = ruc) %>% 
 	dplyr::select(ruc, ruc_id, company_name)
+
 
 # **********************************************
 # trade filtered
@@ -93,26 +109,25 @@ company_final_tbl <- company_tbl %>%
 trade_filtered_tbl <- trade_tbl %>% 
 	filter(year == 2019 ) %>% 
 	group_by(RUC, country_origin_code, description, tariff_fraction, year_month_date) %>% 
-	summarise(cif = round(sum(cif), 2), fob = round(sum(fob), 2) , total_to_pay = round(sum(total_to_pay), 2), 
-					 freight_value = round(sum(freight_value), 2), import_taxes = round(sum(import_taxes), 2),
+	summarise(cif = round(sum(cif), 2), fob = round(sum(fob), 2) , 
+					 total_to_pay = round(sum(total_to_pay), 2), import_taxes = round(sum(import_taxes), 2),
+					 itbms_taxes = round(sum(itbms_taxes), 2), freight_value = round(sum(freight_value), 2), 
 					 insurance = round(sum(insurance), 2), quantity = round(sum(quantity), 2), 
 					 net_weight = round(sum(net_weight), 2))
 show_query(trade_filtered_tbl)
 nrow(trade_filtered_tbl)
 
-trade_filtered_1_tbl <- collect(trade_filtered_tbl)
+trade_serch_tbl <- collect(trade_filtered_tbl)
 
 # filter
-trade_serch_tbl <- trade_filtered_1_tbl %>% 
+trade_serch_tbl <- trade_serch_tbl %>% 
 	filter(tariff_fraction %in% codes_search) # stringr::str_detect(description, text_search)  == TRUE 
-
-trade_serch_2_tbl <- trade_filtered_1_tbl %>% 
-	filter(tariff_fraction %in% codes_search) # stringr::str_detect(description, "SALMÓN")  == TRUE &
-
-trade_serch_tbl <- rbind(trade_serch_tbl, trade_serch_2_tbl)
 trade_serch_tbl$type <- "imports" 
 trade_serch_tbl <- trade_serch_tbl %>% 
 	janitor::clean_names()
+
+trade_serch_tbl %>% 
+	filter(tariff_fraction =='0302.14.00')
 
 trade_serch_tbl <- left_join(trade_serch_tbl, company_final_tbl, by = 'ruc')
 
@@ -122,10 +137,6 @@ trade_serch_tbl %>%
 
 trade_serch_tbl %>% 
 	glimpse()
-
-
-View(trade_serch_tbl)
-nrow(trade_serch_tbl)
 
 descriptions_tbl <- trade_serch_tbl %>% 
 	ungroup() %>% 
@@ -190,10 +201,11 @@ exports_tbl <- 	export_dic_tbl %>%
 		net_weight = peso_neto_kg
 	) %>% 
 	group_by(ruc, country_origin_code, description, tariff_fraction, year_month_date) %>% 
-	summarise(cif = round(sum(cif), 2), fob = round(sum(fob), 2) , total_to_pay = round(sum(total_to_pay), 2), 
-						freight_value = round(sum(freight_value), 2), import_taxes = round(sum(import_taxes)),
-						insurance = round(sum(insurance), 2), quantity = round(sum(quantity), 2), 
-						net_weight = round(sum(net_weight), 2)) 
+summarise(cif = round(sum(cif), 2), fob = round(sum(fob), 2) , 
+					total_to_pay = round(sum(total_to_pay), 2), import_taxes = round(sum(import_taxes), 2),
+					itbms_taxes = round(sum(itbms_taxes), 2), freight_value = round(sum(freight_value), 2), 
+					insurance = round(sum(insurance), 2), quantity = round(sum(quantity), 2), 
+					net_weight = round(sum(net_weight), 2))
 
 nrow(exports_tbl)
 
@@ -221,22 +233,32 @@ colnames(exports_filtered_tbl)
 colnames(trade_serch_tbl)
 
 
-
 trade_serch_tbl$ruc_id <- NULL
 exports_filtered_tbl$ruc_id <- NULL
 
 final_tbl <- rbind(trade_serch_tbl, exports_filtered_tbl)
 
-table(trade_serch_tbl$tariff_fraction)
+table(final_tbl$tariff_fraction)
+table(final_tbl$tariff_fraction, final_tbl$type)
 
 final_tbl %>% 
 	group_by(type) %>% 
 	summarise(total = sum(cif))
 
+
+final_tbl <- left_join(final_tbl, country_tbl, by = 'country_origin_code')
+final_tbl %>% 
+	glimpse()
+
 (25786228 - 1757039)/1000000
 24.02919
 
-write.csv(final_tbl, #fileEncoding = "UTF-8",
+trade_serch_tbl %>% 
+	filter(tariff_fraction =='0302.14.00')
+
+final_tbl_2 <- final_tbl
+final_tbl_2$ruc <- NULL
+write.csv(final_tbl_2, #fileEncoding = "UTF-8",
 					paste0(PATH_OUT, "out_", "final_import_export",".csv"), row.names = FALSE)
 
 
