@@ -6,7 +6,9 @@ library(googledrive)
 library(gargle)
 library(dplyr)
 
-PATH_OUT <- "./00_data/out/imports/"
+type <- "E" # "I"
+
+PATH_OUT <- ifelse(type == "I", "./00_data/out/imports/", "./00_data/out/exports/") 
 # ********************************************************************
 # spanish to english months
 month_names_tbl <- tibble(name = c("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"), 
@@ -42,7 +44,16 @@ set_process_data <- function(file_name) {
 	total <- 0
 	tryCatch(
 		{
+			print(file_name)
 			data_tbl <- readr::read_csv(paste0(PATH_OUT, file_name))
+			
+			if(type == "E") {
+				data_tbl <- data_tbl %>% 
+					rename(
+						impuestos_de_importacion = impuestos_de_exportacion
+					)
+			}
+			
 			#temp <- as.character(data_tbl[c(61272), c("valor_del_flete", "text_original")][2])
 			data_tbl <- data_tbl %>% 
 				mutate(
@@ -93,6 +104,7 @@ set_process_data <- function(file_name) {
 			data_tbl$impuestos_de_proteccion_de_petroleo_txt <- NULL 
 			data_tbl$valor_cif_txt <- NULL 
 			data_tbl$valor_fob_txt <- NULL 
+			data_tbl$record_type <- type
 			
 			data_tbl %>% 
 				glimpse()
@@ -149,6 +161,7 @@ date_time <- as.character(Sys.Date()) # process execution day
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
 data_tbl$process_date <- as.Date(last_update, tryFormats = c('%Y-%m-%d')) #Sys.Date()
+
 #data_tbl <- data_tbl[10,]
 
 httr::set_config(httr::config(http_version = 0))
@@ -170,6 +183,9 @@ bq_conn <-  dbConnect(bigquery(),
 )
 
 
+data_tbl
+nrow(data_tbl)
+
 system.time(
 	# load data ----
 	data_tbl <- data_tbl %>% 
@@ -179,6 +195,7 @@ system.time(
 
 data_tbl %>% 
 	head()
+sum(data_tbl$tbl) # 148,427
 
 bq_deauth()
 

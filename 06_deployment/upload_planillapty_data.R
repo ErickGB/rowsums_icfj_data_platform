@@ -24,7 +24,7 @@ get_css_position_name <- function(name) {
 	return(new_name)
 }
 
-PATH_OUT <- "./00_data/out/salaries/pending_process/january/"
+PATH_OUT <- "./00_data/out/salaries/pending_process/febrary/"
 date_time <- as.character(Sys.Date()) # process execution day
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
@@ -71,6 +71,8 @@ for(i in 1:length(list_files))
 		
 		
 	}
+	temp_raw_tbl$start_date = as.Date(temp_raw_tbl$start_date, tryFormats = c("%d-%m-20%y", "%d/%m/%Y"))
+	
 	if (source == "cgr") {
 		temp_raw_tbl$start_date = as.Date(temp_raw_tbl$start_date, tryFormats = c("%d/%m/%Y"))
 	}
@@ -88,6 +90,11 @@ for(i in 1:length(list_files))
 	}
 }
 
+master_tbl %>% 
+	glimpse()
+
+table(master_tbl$record_date, master_tbl$file_name)
+table(master_tbl$record_date, master_tbl$update_date)
 
 
 master_tbl <- master_tbl %>% 
@@ -125,13 +132,14 @@ master_tbl <- master_tbl %>%
 master_tbl %>% 
 	glimpse()
 
+table(master_tbl$record_date)
 table(master_tbl$record_date, master_tbl$update_date)
 
 master_tbl <- master_tbl %>% 
 	#filter(is.null(start_date) == FALSE) %>% 
 	mutate(
-		update_date = as.Date('2019-02-16', tryFormat = '%Y-%m-%d'), 
-		record_date = as.Date('2020-01-31', tryFormat = '%Y-%m-%d')
+		update_date = as.Date('2019-03-18', tryFormat = '%Y-%m-%d'), # cuando lo actualice
+		record_date = as.Date('2020-02-29', tryFormat = '%Y-%m-%d')  # de cuando es el dato
 		#status = toupper(str_trim(status, side = "both")),
 		#position = toupper(str_trim(position, side = "both")),
 				 )
@@ -141,7 +149,7 @@ master_tbl <- master_tbl %>%
 #cgr_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_", process_month, ".csv"))
 #mic_tbl <- readr::read_csv(paste0(PATH_OUT, "mic_gov_salaries_", process_month, ".csv"))
 #meduca_tbl <- readr::read_csv(paste0(PATH_OUT, "meduca_gov_salaries_", process_month, ".csv"))
-# 184184 - 195224.. 180720
+# 184184 - 195224.. 180720, feb = 186625
 nrow(master_tbl)
 
 
@@ -201,8 +209,8 @@ cgs_tbl <- cgs_tbl %>%
 	select(employee_salary_id, names)
 min(cgs_tbl$employee_salary_id) - count_result # 1 it's ok
 
-master_tbl[178780:178782, c("start_date", "record_date", "update_date", "entity", "file_name")] %>% glimpse()
-master_tbl[178781, c("start_date")] <- as.Date("2019-02-01", tryFormats = c('%Y-%m-%d'))
+#master_tbl[178780:178782, c("start_date", "record_date", "update_date", "entity", "file_name")] %>% glimpse()
+cgs_tbl[185693, c("start_date") ] <- as.Date("2020-02-01", tryFormats = c('%Y-%m-%d'))
 
 # 1: Load principal table: staging_central_gov_salaries
 tryCatch(
@@ -215,8 +223,11 @@ error=function(error_message) {
 	print(error_message)
 }) 
 
+185693
+cgs_tbl[185693, c("start_date") ] 
+
 table(cgs_tbl$status)
-cgs_tbl <- master_tbl # 180,720
+#cgs_tbl <- master_tbl # 180,720
 cgs_tbl$employee_salary_id <- NULL
 cgs_tbl$file_name <- NULL
 job <- insert_upload_job("rowsums", "journalists", table = "central_gov_salaries", 
@@ -238,6 +249,7 @@ write.csv(as_tibble(query_results) %>%
 						arrange(desc(salary)), 
 					paste0(PATH_OUT, "new_jobs_", process_month,".csv"), row.names = FALSE)
 
+table(query_results$entity)
 
 sql <- "SELECT max(jobs_id) max FROM journalists.d_jobs"
 count_result <- query_exec(sql, project = project, useLegacySql = FALSE)

@@ -300,7 +300,7 @@ sum(final_expanded_tbl$over_costs) # 5,451,908... ene 5,565,226
 sum(final_expanded_tbl$total) # 63,300,141... ene 63,943,842
 
 # write data processing
-write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_processing_dic.csv"), row.names = FALSE)
+write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_processing.csv"), row.names = FALSE)
 
 
 # **************************
@@ -399,6 +399,9 @@ write.csv(employee_css_tbl, paste0(PATH_OUT, "css_employees_processing_", proces
 
 # ********************************************************************
 # create data for Tableau month dashboard : central_gov_salaries ----
+
+#employee_css_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/css_employees_processing_february.csv")
+#employee_css_tbl$X1 <- NULL 
 master_css_tbl <- employee_css_tbl %>% 
 	mutate(
 		key = paste(cedula, as.character(fecha_inicio), cargo, sep = "_")
