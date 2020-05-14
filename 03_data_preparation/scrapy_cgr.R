@@ -264,12 +264,13 @@ update_data <-  html %>%
   rvest::html_nodes(xpath = '//p') 
 update <- update_data[9] %>% 
 html_text()
+
 update <- gsub("\r\n", "", update)
 update <- gsub("\"", "", update)
 update <- gsub("Fecha de Actualización de los Datos :", "", update)
 update <-stringr::str_trim(update, side = "right")
 update <-stringr::str_trim(update, side = "left")
-
+update # record_date
 # ********************************************************************
 # PROCESSED IN PARALLEL with furrr  ----
 #get_employees('007', '1')
