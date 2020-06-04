@@ -50,6 +50,7 @@ get_sex_by_name <- function(name)
 }
 
 # get_count_words("GERMANIA MURILLO VILLARREAL DE LAKE")
+# get_count_words("Eric Cárdenas")
 get_count_words <- function(sentence)
 {
 	data_text <- str_split(sentence, pattern = " ")[[1]]
@@ -59,6 +60,7 @@ get_count_words <- function(sentence)
 }
 
 # get_first_name("BERNADETH LOURDES  SERRANO LEE ")
+# get_first_name("Eric Cárdenas")
 get_first_name <- function(sentence) 
 {
 	data_text <- str_split(sentence, pattern = " ")[[1]]
@@ -74,6 +76,7 @@ get_first_name <- function(sentence)
 	return(first_name)
 }
 # get_last_name("BERNADETH LOURDES  SERRANO LEE ")
+# get_last_name("Eric Cárdenas")
 get_last_name <- function(sentence)
 {
 	first <- nchar(get_first_name(sentence))
@@ -104,13 +107,16 @@ get_month_num_esp <- function(month_name_esp) {
 
 # get_date_esp("00/01/1900")
 # get_date_esp("01/10/2020")
+# get_date_esp("1999/12/22")
+# get_date_esp("0000-00-00") 
+
 get_date_esp <- function(date_esp) {
 	#date_esp <- "02-ene-19"
 	date_str <- "01/01/1900"
 	tryCatch(
 		{
 			temp_date <- stringr::str_replace(date_esp, substr(date_esp, 4, 6), get_month_num_esp(substr(date_esp, 4, 6))) 
-			date <- as.Date(temp_date, tryFormat = c("%d-%m-%Y", "%d-%m-%y", "%d/%m/%Y", "%d/%m/%Y", "%Y-%m-%d"))
+			date <- as.Date(temp_date, tryFormat = c("%d-%m-%Y", "%d-%m-%y", "%d/%m/%Y", "%d/%m/%Y", "%Y-%m-%d", "%Y/%m/%d", "%Y/%d/%m"))
 			date_str <- temp_date
 		}, error=function(cond) {
 			print(paste0("Error in function 'get_date_esp' with data: ", date_esp, ". Message: ", cond))

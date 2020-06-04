@@ -11,11 +11,7 @@ library(furrr)     # Parallel Processing using purrr (iteration)
 # ***************************************************************************
 url <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=31"
 PATH_OUT <- "./00_data/out/salaries/"
-date_time <- as.character(Sys.Date()) # process execution day
-last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
-process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
-process_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
 # ***********************************************
 # functions ----
 source("00_scripts/etl_functions.R")
@@ -105,11 +101,6 @@ get_amp_employee <- function(url) {
 # Start, active splash ----
 splash("localhost") %>% splash_active()
 
-# 1. capture the last update
-file_name <- paste0("./00_data/images/2020/amp/amp_last_update_", process_month,".png")
-img_last <- render_png(url = url, wait = 5)
-image_write(img_last, file_name)
-
 
 # ***********************************************
 # scraping CSS web page 
@@ -119,6 +110,49 @@ body_html <- splash_local %>%
 	splash_go(url) %>% 
 	splash_wait(5) %>% 
 	splash_html()
+
+
+# ************************************     
+# dates ---
+
+# we return date 
+table_span <- body_html %>% 
+	rvest::html_nodes(xpath = '//span') 
+
+page_date <- table_span[4] %>% 
+	rvest::html_text()
+page_date <- as.POSIXlt(page_date, tz = "UTC-5")
+page_date
+
+execution_date <- as.character(Sys.Date()) # process execution day
+execution_month <- paste0(substr(execution_date, 1, 8), "01") # execution month
+
+update_date <- as.Date(page_date)  # data of the month ...
+update_month <- tolower(month.name[as.integer(paste0(substr(update_date, 6, 7)))])
+update_year <- as.integer(substr(page_date, 1, 4))
+
+data_date <- as.Date(paste0(substr(page_date, 1, 4), "/", substr(page_date, 6, 7), "/01"), 
+										 tryFormats = c("%Y/%m/%d")) - as.difftime(1, unit = "days")
+data_month <- tolower(month.name[as.integer(paste0(substr(data_date, 6, 7)))])
+
+# dates 
+page_date       # page -> last update
+update_date     # page -> last update in date format
+
+data_date       # What month of payment correspond .. last_date - 1 month
+execution_date  # when I run the data extraction
+
+# ************************************     
+# 1. capture the last update
+file_name <- paste0("./00_data/images/2020/amp/amp_last_update_", update_date,".png")
+img_last <- render_png(url = url, wait = 5)
+image_write(img_last, file_name)
+
+
+# ************************************     
+
+
+
 
 # we return all the tables on the page
 table_html <- body_html %>% 
@@ -182,7 +216,38 @@ final_tbl <- amp_tbl %>%
 final_tbl %>% 
 	summarize(total = sum(total), count = n())
 
+final_tbl %>% 
+	glimpse()
+
+
+master_tbl <- final_tbl %>% 
+	mutate(
+		#person_id = map_chr(person_id, get_people_id), # standarize "cedula" 
+		#start_date = map_chr(start_date, get_date_esp),
+		count_words = map_chr(complete_name, get_count_words),
+		first_name = map_chr(complete_name, get_first_name),
+		last_name = map_chr(complete_name, get_last_name),
+		code = code_id,
+		entity = entity_name,
+		departament = "unknow",
+		#key = paste(person_id, as.character(start_date), position, sep = "_"),
+		update_date = update_date, # cuándo se actualizó la página?
+		record_date = data_date  # de cuándo es el dato? 
+		# execution_date = execution_date # cuando procese el dato?
+	) %>% 
+	mutate(
+		count_words = as.integer(count_words), 
+		sex = sapply(first_name, function(x) get_sex_by_name(x))
+	) 
+
+master_tbl %>% 
+	DataExplorer::plot_missing()
+
+master_tbl %>% 
+	glimpse()
+
+
 # write data processing
-write.csv(final_tbl, paste0(PATH_OUT, "amp_employees_processing_", process_month,".csv"), row.names = FALSE)
-
-
+file_name <- paste0(PATH_OUT, "central_amp_gov_salaries_", update_date,".csv")
+file_name
+write.csv(master_tbl, file_name, row.names = FALSE)

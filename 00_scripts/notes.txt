@@ -109,3 +109,41 @@ if(requiere_joins_files) {
 	final_tbl <- rbind(final_tbl, css_tbl)
 }
 
+
+
+
+
+
+
+semilla. gwag / gwagwa.
+Ibler / Ibeler | Olowaibibbiler. personaje central en babigala, simboliza
+la liberación de la madre tierra; el bien.
+aprender. durdagged.
+estrella. nisgwa.
+informar. owisoged.
+binoed / binoged / obinoed / obinoged. renovar, innovar, remozar; reorganizar.
+organizar. ilemagged.
+
+
+ad valorem 
+Expresión latina que significa 'según el valor'; se aplica a los derechos y tasas que se basan en el valor de un producto.
+
+
+word trade wiki 
+Trade Statistics
+
+Gwag 
+data analitcs platform 
+
+ad valorem 
+data analitcs platform 
+
+Ibler
+data analitcs platform 
+
+
+iFrame tableau
+<iframe frameborder="0" marginheight="0" marginwidth="0" title="Visualización de datos" allowtransparency="true" allowfullscreen="true" class="tableauViz" style="display: block; width: 380px; height: 1250px; margin: 0px; padding: 0px; border: none;" src="http://public.tableau.com/views/migrantes7/Movil2?:embed=y&amp;:showVizHome=no&amp;:host_url=https%3A%2F%2Fpublic.tableau.com%2F&amp;:embed_code_version=3&amp;:tabs=no&amp;:toolbar=yes&amp;:animate_transition=yes&amp;:display_static_image=no&amp;:display_spinner=no&amp;:display_overlay=yes&amp;:display_count=yes&amp;publish=yes&amp;:loadOrderID=1"></iframe>
+
+
+

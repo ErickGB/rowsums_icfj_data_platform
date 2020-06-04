@@ -24,8 +24,8 @@ get_css_position_name <- function(name) {
 	return(new_name)
 }
 
-PATH_OUT <- "./00_data/out/salaries/pending_process/febrary/"
-date_time <- as.character(Sys.Date()) # process execution day
+PATH_OUT <- "./00_data/out/salaries/pending_process/2020/march/"
+date_time <- as.character(as.Date('15/04/2020', tryFormats=c('%d/%m/%Y'))) # process execution day Sys.Date()
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
 process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
@@ -114,6 +114,10 @@ master_tbl <- master_tbl %>%
 													 "ALBANIL_JEFE", position))
 
 master_tbl <- master_tbl %>% 
+	mutate(position = ifelse(position == "ALBAÃÂIL_JEFE", 
+													 "ALBANIL_JEFE", position))
+
+master_tbl <- master_tbl %>% 
 	mutate(position = ifelse(position == "JEFA DE COOÉRACIÓN TECNICA", 
 													 "JEFA DE COORDINACIÓN TECNICA", position))
 
@@ -138,8 +142,8 @@ table(master_tbl$record_date, master_tbl$update_date)
 master_tbl <- master_tbl %>% 
 	#filter(is.null(start_date) == FALSE) %>% 
 	mutate(
-		update_date = as.Date('2019-03-18', tryFormat = '%Y-%m-%d'), # cuando lo actualice
-		record_date = as.Date('2020-02-29', tryFormat = '%Y-%m-%d')  # de cuando es el dato
+		update_date = as.Date('2020-04-15', tryFormat = '%Y-%m-%d'), # cuando lo actualice
+		record_date = as.Date('2020-03-31', tryFormat = '%Y-%m-%d')  # de cuando es el dato
 		#status = toupper(str_trim(status, side = "both")),
 		#position = toupper(str_trim(position, side = "both")),
 				 )
@@ -159,14 +163,16 @@ master_tbl %>%
 master_tbl %>% 
 	mutate(month = lubridate::month(update_date)) %>% 
 	group_by(month, file_name) %>% 
-	summarize(total = n(), max_date = max(start_date))
+	summarize(total = n(), salary = round(sum(salary)/1000000, 2),  max_date = max(start_date))
 
-master_tbl %>% 
+entities_temp <- master_tbl %>% 
 	mutate(month = lubridate::month(update_date)) %>% 
-	group_by(month, entity) %>% 
-	summarize(total = n(), max_date = max(start_date, na.rm = TRUE)) %>% 
+	group_by(month, code, entity) %>% 
+	summarize(total = n(), salario = sum(salary), max_date = max(start_date, na.rm = TRUE)) %>% 
 	arrange(desc(total))
 
+nrow(master_tbl)
+View(entities_temp)
 
 # temporally out MEDUCA
 #master_tbl <- master_tbl %>% 
@@ -210,7 +216,7 @@ cgs_tbl <- cgs_tbl %>%
 min(cgs_tbl$employee_salary_id) - count_result # 1 it's ok
 
 #master_tbl[178780:178782, c("start_date", "record_date", "update_date", "entity", "file_name")] %>% glimpse()
-cgs_tbl[185693, c("start_date") ] <- as.Date("2020-02-01", tryFormats = c('%Y-%m-%d'))
+#cgs_tbl[185693, c("start_date") ] <- as.Date("2020-02-01", tryFormats = c('%Y-%m-%d'))
 
 # 1: Load principal table: staging_central_gov_salaries
 tryCatch(
@@ -223,48 +229,108 @@ error=function(error_message) {
 	print(error_message)
 }) 
 
-185693
-cgs_tbl[185693, c("start_date") ] 
+
+#cgs_tbl[185693, c("start_date") ] 
 
 table(cgs_tbl$status)
 #cgs_tbl <- master_tbl # 180,720
 cgs_tbl$employee_salary_id <- NULL
 cgs_tbl$file_name <- NULL
+cgs_tbl$position <- str_trim(cgs_tbl$position, "both")
 job <- insert_upload_job("rowsums", "journalists", table = "central_gov_salaries", 
 												 values = cgs_tbl, write_disposition = "WRITE_TRUNCATE")
 wait_for(job)
 
+entidades_tbl <- readr::read_csv2("./00_data/out/salaries/entidades.csv")
+entidades_tbl$entity_id <- as.integer(entidades_tbl$entity_id)
+entidades_tbl %>% 
+	glimpse()
+
+# add data to final tables 
+job <- insert_upload_job("rowsums", "journalists", table = "d_entity", 
+												 values = entidades_tbl, write_disposition = "WRITE_TRUNCATE")
+wait_for(job)
 
 
 # *****************
 # JOBS : new jobs? ADD MANUALLY    :(     .. code != '900' and 
 sql <- "SELECT entity, upper(position) position, count(*) as total, avg(salary) salary 
-FROM data_test.staging_central_gov_salaries where position not in (
-  SELECT job_title FROM journalists.d_jobs
+FROM journalists.central_gov_salaries where (position) not in (
+  SELECT (job_title) FROM journalists.d_jobs
 ) GROUP BY entity, position"
 query_results <- query_exec(sql, project = project, useLegacySql = FALSE)
 as_tibble(query_results) %>% 
 	arrange(desc(salary))
-write.csv(as_tibble(query_results) %>% 
-						arrange(desc(salary)), 
-					paste0(PATH_OUT, "new_jobs_", process_month,".csv"), row.names = FALSE)
 
-table(query_results$entity)
+
+entity_jbos <- as_tibble(query_results) %>% 
+	group_by(entity, position) %>% 
+	summarise(salary = sum(salary)) %>% 
+	arrange(desc(salary)) 
+table(entity_jbos$entity)
+entity_jbos$position[1]
+entity_jbos$position[2]
+View(entity_jbos)
+
+add_jobs <- as_tibble(query_results) %>% 
+	rename(job_title = position) %>% 
+	mutate(PEP = NA, PEP2 = NA, date_record = '03/18/2020', 
+				 job_position = NA,
+				 cluster = NA, jobs_id = rownames(.)) %>% 
+	dplyr::select(jobs_id, job_position, job_title, PEP, PEP2, date_record, cluster)
+
+write.csv(entity_jbos, 
+					paste0(PATH_OUT, "entity_new_jobs_", process_month,".csv"), row.names = FALSE)
+View(entity_jbos)
+
+add_jobs <- readr::read_csv2(paste0("./00_data/out/salaries/", "new_jobs_", process_month,".csv"))
+
+
+# Ajusta los cargos que hacen falta... 
+
+#UPDATE data_test.staging_central_gov_salaries ST
+#   SET ST.position = tp.position_modified
+#  FROM data_test.staging_jobs_diferences tp
+# WHERE ST.position = tp.position
+
+
+#update data_test.staging_central_gov_salaries 
+#   SET position = 'CONDUCTOR DE VEHICULO  II' 
+# where position = 'CONDUCTOR_DE VEHICULO II'
+
+
+
 
 sql <- "SELECT max(jobs_id) max FROM journalists.d_jobs"
 count_result <- query_exec(sql, project = project, useLegacySql = FALSE)
 count_result$max + 1
 
+add_jobs$jobs_id <- add_jobs$jobs_id +  count_result$max
+
 # add jobs manually
-jobs_tbl <- readr::read_csv2(paste0(PATH_OUT, "out_final_jobs.csv"))
+jobs_tbl <- readr::read_csv(paste0("./00_data/out/salaries/", "last_jobs.csv"))
 jobs_tbl$jobs_id <- as.integer(jobs_tbl$jobs_id)
 jobs_tbl$cluster <- as.integer(jobs_tbl$cluster)
-jobs_tbl[2388:2390,]
+jobs_tbl[count_result$max:count_result$max+1,]
 nrow(jobs_tbl)
+
+
+jobs_tbl_2 <- rbind(jobs_tbl, add_jobs)
+jobs_tbl_2 <- jobs_tbl %>% 
+	group_by(job_position, job_title) %>% 
+	summarise(jobs_id = max(jobs_id), PEP2 = min(PEP2), date_record = min(date_record), n = n()) %>% 
+	filter(n > 1)
+View(jobs_tbl_2)
+
+add_jobs <- add_jobs %>% 
+	filter(!(jobs_id %in% jobs_tbl_2$jobs_id))
+jobs_tbl <- rbind(jobs_tbl, add_jobs)
 
 job <- insert_upload_job("rowsums", "journalists", table = "d_jobs", 
 												 values = jobs_tbl, write_disposition = "WRITE_TRUNCATE")
 wait_for(job)
+
+
 
 # *****************
 # PEOPLE: add new people
@@ -330,8 +396,8 @@ dates_records
 
 new_record <- dates_records[1, ]
 new_record$record_id <- (max(dates_records$record_id) + 1)
-new_record$record_date <- as.Date(last_update)
-new_record$processed_date <-  as.Date(last_update) - as.difftime(1, unit = "days")
+new_record$record_date <- master_tbl$update_date[1]  #as.Date(last_update)
+new_record$processed_date <-  master_tbl$record_date[1] #as.Date(last_update) - as.difftime(1, unit = "days")
 new_record$is_actual <- 1
 
 dates_records$is_actual <- 0

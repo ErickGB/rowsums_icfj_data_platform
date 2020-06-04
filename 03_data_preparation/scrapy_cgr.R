@@ -14,7 +14,7 @@ library(XML)
 library(bigrquery)
 # *******************************************************************************
 PATH_OUT <- "./00_data/out/salaries/"    
-PATH_PROCESS_OUT <- "./00_data/out/salaries/pending_process/"    
+PATH_PROCESS_OUT <- "./00_data/out/salaries/pending_process/2020/"    
 
 date_time <- as.character(Sys.Date()) # process execution day
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
@@ -437,14 +437,14 @@ master_tbl %>%
 	glimpse()
 
 View(master_tbl)
-
-nrow(master_tbl)
+ 
+nrow(master_tbl) # 157426
 paste0(PATH_PROCESS_OUT,  actual_month, "/",  "central_gov_salaries_", actual_month,".csv")
 write.csv(master_tbl, 
 					paste0(PATH_PROCESS_OUT,  actual_month, "/",  "central_gov_salaries_", actual_month,".csv")
 					, row.names = FALSE) 
 table(master_tbl$update_date)
-max(master_tbl$start_date)
+max(as.Date(master_tbl$start_date, tryFormats = c("%d/%m/%Y")), na.rm = TRUE)
 
 # 2020-03-01 
 #     149466 

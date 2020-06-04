@@ -9,14 +9,28 @@ library(magick)    # Simplify high-quality image processing in R
 library(purrr)     # Functional programming
 library(furrr)     # Parallel Processing using purrr (iteration)
 # ***************************************************************************
+# Min. Ambiente
 url <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=35"
 url_dinamic <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_grid&amp;gid=5_ql_1&amp;o_b=id&amp;o_d=ASC&amp;p=x_url&amp;rpp=125&id=35"
-PATH_OUT <- "./00_data/out/salaries/pending_process/"
-date_time <- as.character(Sys.Date()) # process execution day
-last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
+entity_name <- "Ministerio de Ambiente"
+code_id <- "902"
+output_file_name <- "miamb_gov_salaries_"
 
-process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
-process_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
+
+# defensoría
+#http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=54
+#option=com_grid&amp;gid=53_on_1&amp;o_b=posicion&amp;o_d=ASC&amp;p=1&amp;rpp=125&id=54
+	
+url <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=54"
+url_dinamic <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_grid&amp;gid=53_on_1&amp;o_b=id&amp;o_d=ASC&amp;p=x_url&amp;rpp=125&id=54"
+entity_name <- "Defensoría del Pueblo"
+code_id <- "903"
+output_file_name <- "defensoria_gov_salaries_"
+
+
+PATH_OUT <- "./00_data/out/salaries/pending_process/"
+start_time <- system.time()
+
 # ***********************************************
 # functions ----
 source("00_scripts/etl_functions.R")
@@ -120,7 +134,7 @@ get_mc_employee <- function(tableid, url) {
 }
 
 # ***********************************************
-# scraping - Ministerio de ambiente
+# scraping - Dates 
 # ***********************************************
 
 body_html <- splash_local %>% 
@@ -132,10 +146,34 @@ body_html <- splash_local %>%
 table_span <- body_html %>% 
 	rvest::html_nodes(xpath = '//span') 
 
-update_date <- table_span[4] %>% 
+page_date <- table_span[4] %>% 
 	rvest::html_text()
-update_date <- as.POSIXlt(update_date, tz = "UTC-5")
-unclass(update_date)
+page_date <- as.POSIXlt(page_date, tz = "UTC-5")
+page_date
+
+unclass(page_date)
+
+# cuando lo ejecuto 
+# que fecha de actualización tiene
+# de que mes es el dato (fecha actualización - 1 mes)
+
+execution_date <- as.character(Sys.Date()) # process execution day
+execution_month <- paste0(substr(execution_date, 1, 8), "01") # execution month
+
+update_date <- as.Date(page_date)  # data of the month ...
+update_month <- tolower(month.name[as.integer(paste0(substr(update_date, 6, 7)))])
+update_year <- as.integer(substr(page_date, 1, 4))
+
+data_date <- as.Date(paste0(substr(page_date, 1, 4), "/", substr(page_date, 6, 7), "/01"), 
+				tryFormats = c("%Y/%m/%d")) - as.difftime(1, unit = "days")
+data_month <- tolower(month.name[as.integer(paste0(substr(data_date, 6, 7)))])
+
+# dates 
+page_date       # page -> last update
+update_date     # page -> last update in date format
+
+data_date       # What month of payment correspond .. last_date - 1 month
+execution_date  # when I run the data extraction
 
 # ***********************************************
 # Save images
@@ -143,8 +181,10 @@ unclass(update_date)
 # Start, active splash ----
 splash("localhost") %>% splash_active()
 
+
 # 1. capture the last update
-file_name <- paste0("./00_data/images/2020/miamb/miamb_last_update_", process_month,".png")
+file_name <- paste0("./00_data/images/",update_year, "/",  update_month, "/miamb_last_update_", paste0(update_month, update_year)  ,"_process_", execution_date,".png")
+file_name
 img_last <- render_png(url = url, wait = 5)
 image_write(img_last, file_name)
 
@@ -186,6 +226,9 @@ Sys.time() - time # Time difference of  54.01361 secs
 scrapy_tbl %>% 
 	head(10)
 
+table(scrapy_tbl$start_date)
+View(scrapy_tbl)
+
 # ***********************************************
 # cleaning data
 
@@ -223,10 +266,10 @@ final_tbl %>%
 
 #final_tbl <- final_tbl %>% 
 #	select(person_id, complete_name, position, department, status, start_date, salary, expenses, over_costs, total_income)
-View(final_tbl)
+#View(final_tbl)
 
 # write data processing
-write.csv(final_tbl, paste0(PATH_OUT, "miamb_employees_processing_", process_month,".csv"), row.names = FALSE)
+# write.csv(final_tbl, paste0(PATH_OUT, "miamb_employees_processing_", process_month,".csv"), row.names = FALSE)
 
 # ********************************************************************
 # create data for Tableau month dashboard : central_gov_salaries ----
@@ -241,12 +284,13 @@ master_tbl <- final_tbl %>%
 		count_words = map_chr(complete_name, get_count_words),
 		first_name = map_chr(complete_name, get_first_name),
 		last_name = map_chr(complete_name, get_last_name),
-		code = "902",
-		entity = "Ministerio de Ambiente",
+		code = code_id,
+		entity = entity_name,
 		departament = "unknow",
 		key = paste(person_id, as.character(start_date), position, sep = "_"),
-		update_date = last_update, 
-		record_date = process_date
+		update_date = update_date, # cuándo se actualizó la página?
+		record_date = data_date  # de cuándo es el dato? 
+		# execution_date = execution_date # cuando procese el dato?
 	) %>% 
 	mutate(
 		count_words = as.integer(count_words), 
@@ -266,10 +310,18 @@ master_tbl <- master_tbl %>%
 				 start_date, first_name, entity, update_date, sex, url, record_date, key, 
 				 over_costs, departament) 
 
-write.csv(master_tbl, paste0(PATH_OUT, "miamb_gov_salaries_", process_month,".csv"), row.names = FALSE) 
+master_tbl %>% 
+	glimpse()
+
+
+ouput_path <- paste0(PATH_OUT, update_year, "/",  update_month, "/miamb_last_update_", paste0(update_month, update_year)  ,"_process_", execution_date,".png")
+ouput_path
+
+write.csv(master_tbl, ouput_path, row.names = FALSE) 
 rm(body_html, final_tbl, scrapy_tbl, records_tbl, table_html)
 
-
+# total time
+system.time() - start_time 
 
 
 

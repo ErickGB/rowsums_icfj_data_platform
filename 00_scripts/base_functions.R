@@ -45,7 +45,7 @@ get_outliers <- function(data_tbl){
 	#	filter(predict > threshold) 
 	#data_outliers_tbl$threshold <- threshold
 	
-	h2o.shutdown()
+	#h2o.shutdown()
 	return(anomaly)
 } 
 

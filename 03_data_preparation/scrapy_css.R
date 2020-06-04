@@ -44,10 +44,10 @@ get_css_employees <- function(page) {
 			total = character()
 		)
 		
-		print(paste0("page:", as.character(page)))
+		print(paste0("start processing page:", as.character(page)))
 		body_html <- splash_local %>% 
 			splash_go(url_css) %>% 
-			splash_wait(10)
+			splash_wait(5)
 		
 		body_html <- body_html %>% 
 			splash_focus("#rec_f0_bot") %>% 
@@ -55,7 +55,7 @@ get_css_employees <- function(page) {
 			splash_send_keys("<Return>") %>% 
 			splash_focus("#brec_bot") %>% 
 			splash_send_keys("<Return>") %>% 
-			splash_wait(10) %>% 
+			splash_wait(13) %>% 
 			#splash_click(x = 62, y = 760) %>% 
 			splash_html() # splash_png() 
 		#body_html
@@ -63,7 +63,7 @@ get_css_employees <- function(page) {
 		#body_html %>% 
 		#	rvest::html_nodes(css = 'input[id="rec_f0_bot"]') %>% 
 		#	rvest::html_attr("value") 
-		
+		#print(paste0("recovery items:", as.character(page)))
 		for(i in 1:10) {
 			id <- i
 			pperson_id <- body_html %>% 
@@ -124,20 +124,20 @@ get_css_employees <- function(page) {
 		}
 	},
 	error=function(error_message) {
-		htlm_error <- body_html %>% 
-			splash_html() # splash_png() 
+		#htlm_error <- body_html %>% 
+		#	splash_html() # splash_png() 
 		
 		error_row_tbl <- tibble(
-			error_id = id,
-			messages = paste0("error ", id, ": ", error_message, " -->> with html result:", as.character(htlm_error))
+			error_id = page,
+			messages = paste0("error page:", page, ": ", error_message) # , " -->> with html result:", as.character(htlm_error)
 		)
-		print(paste0("error ", id, ": ", error_message))
+		print(paste0("error page:", page, ", message: ", error_message))
 		error_tbl <- rbind(error_tbl, error_row_tbl)
 		
 		page_tbl <- tibble(
-			person_id = id,
+			person_id = page,
 			complete_name = error_message,
-			job_title = "",
+			job_title = "error",
 			departament = "",
 			status = "",
 			start_date = "",
@@ -146,6 +146,7 @@ get_css_employees <- function(page) {
 			over_costs = "",
 			total = ""
 		)
+		return(page_tbl)
 		#page_tbl <- temp_tbl 
 	})
 	return(page_tbl)
@@ -153,11 +154,11 @@ get_css_employees <- function(page) {
 
 # *******************************************************************************
 
-# Table with results 1 to 3443
+# Table with results 1 to 3456
 final_tbl <- tibble(
-	id = 1:3436,
-	entity = rep("CSS", 1, 3436),
-	site = rep(url_css, 1, 3436)
+	id = 1:3456,
+	entity = rep("CSS", 1, 3456),
+	site = rep(url_css, 1, 3456)
 )
 
 
@@ -190,18 +191,37 @@ body_html <- splash_local %>%
 	splash_wait(5) %>% 
 	splash_html()
 
+
+
 time <- Sys.time()
 #plan("multiprocess")
 final_tbl_2 <- final_tbl %>%
+	filter(id %in% c(3084, 2815, 2538, 2483, 1736, 1277, 1006, 753, 414)) %>% 
 	mutate(
 		records = furrr::future_map(id, get_css_employees) 
 	) # %>% unnest()
 Sys.time() - time # Time difference of 6.748743 hours
 error_tbl
 
-
 final_expanded_tbl <- final_tbl_2 %>% 
 	unnest()
+
+
+final_expanded_tbl <- rbind(final_expanded_tbl_2, final_expanded_tbl)
+rm(final_expanded_tbl_2)
+
+
+#validate_tbl <- final_expanded_tbl %>% 
+#	dplyr::select(id, entity) %>% 
+#	count(id) 
+	
+#validate_tbl <- left_join(final_tbl, validate_tbl, by="id")
+#validate_tbl <- validate_tbl %>% 
+#	filter(is.na(n))  %>% 
+#	dplyr::select(id, entity, site)
+
+#final_tbl <- validate_tbl
+#final_expanded_tbl <- rbind(temp, final_expanded_tbl)
 
 # structure 
 final_expanded_tbl %>% 
@@ -217,7 +237,7 @@ final_expanded_tbl %>%
 final_expanded_tbl %>%  
 	head()
 
-write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_raw.csv"))
+#write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_raw.csv"))
 error_tbl
 
 
@@ -300,7 +320,7 @@ sum(final_expanded_tbl$over_costs) # 5,451,908... ene 5,565,226
 sum(final_expanded_tbl$total) # 63,300,141... ene 63,943,842
 
 # write data processing
-write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_processing.csv"), row.names = FALSE)
+#write.csv(final_expanded_tbl, paste0(PATH_OUT, "css_employees_processing.csv"), row.names = FALSE)
 
 
 # **************************
@@ -395,10 +415,11 @@ employee_css_tbl %>%
 sum(employee_css_tbl$over_costs) # 5,592,724
 
 # write data processing
-write.csv(employee_css_tbl, paste0(PATH_OUT, "css_employees_processing_", process_month,".csv"))
+#write.csv(employee_css_tbl, paste0(PATH_OUT, "css_employees_processing_", process_month,".csv"))
 
 # ********************************************************************
 # create data for Tableau month dashboard : central_gov_salaries ----
+
 
 #employee_css_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/css_employees_processing_february.csv")
 #employee_css_tbl$X1 <- NULL 
@@ -415,18 +436,16 @@ master_css_tbl <- employee_css_tbl %>%
 				 start_date, first_name, entity, update_date, sex, url, record_date, key, 
 				 over_costs, departament) 
 
-write.csv(master_css_tbl, paste0(PATH_OUT, "central_css_gov_salaries_", process_month,".csv"), row.names = FALSE) 
+
+master_css_tbl_2 <- rbind(master_css_tbl, final_master_css_tbl)
+
+
+write.csv(master_css_tbl_2, paste0(PATH_OUT, "central_css_gov_salaries_", process_month,".csv"), row.names = FALSE) 
 print(sum(master_css_tbl$over_costs, na.rm = TRUE))
-rm(body_html, error_tbl, final_tbl)
+#rm(body_html, error_tbl, final_tbl)
 warnings() 
 
-
-
-# Nota: Validar caso de
-# RUSBEL     BATISTA   9-0098-00959 DIRECTOR_NACIONAL... 5k + 7k = 12k
 # ********************************************************************
 # END 
 # ********************************************************************
-
-
 

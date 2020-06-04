@@ -418,6 +418,23 @@ where record_id = 2
 group by co. alpha_2 , co.name, region, sub_region, latitude, longitude, company, RUC, category_code, 
 sub_category_code, category, sub_category,month, year, year_month_date, year_date 
 
+-- CREATE OR REPLACE MATERIALIZED VIEW planillapty.comtrade.transaction_summary_mv AS
+CREATE OR REPLACE MATERIALIZED VIEW planillapty.comtrade.transaction_summary_mv AS
+select co.alpha_2 , co.name, region, sub_region, company_name, ruc, category_code, 
+sub_category_code, category, sub_category, port_name, transaction_type, latitude, longitude, fi.record_date,
+count(*) count, sum(total_to_pay) total_to_pay, sum(cif) cif, sum(fob) fob,
+sum(insurance) insurance, sum(freight) freight,
+sum(oil_protection_taxes) oil_protection_taxes, sum(isc_taxes) isc_taxes, 
+sum(itbms_taxes) itbms_taxes, 
+sum(quantity) quantity, sum(gross_weight) gross_weight, sum(net_weight) net_weight
+from comtrade.transaction_ft fi
+inner join comtrade.company_dm cp on fi.company_id = cp.company_id
+inner join comtrade.category_dm ca on  fi.category_id = ca.category_id
+inner join comtrade.country_dm co on  fi.country_id = co.country_id
+-- where  transaction_type = 'import'
+group by co.alpha_2 , co.name, region, sub_region, latitude, longitude, company_name, port_name, RUC, category_code, 
+sub_category_code, category, sub_category, transaction_type, fi.record_date
+   
 
 
 select person_id cedula, entity_name entidad, first_name nombre, last_name apellido, job_title cargo, 
@@ -463,8 +480,58 @@ select entity_name, person_id, first_name, last_name, job_position, job_title, s
    and job_title = 'AYUDANTE_GENERAL'
    
    
+   
+   
+   
+   
+   
+   
 
 
+
+
+
+-- select * from journalists.d_jobs where job_title LIKE  "DIRECTOR DE ASESORÍA%" --'DIRECTOR DE ASESORÍA JURIDICA'
+-- SELECT * FROM data_test.staging_central_gov_salaries where position like 'DIRECTOR DE%'
+-- 189211, 188836
+-- select count(*) from journalists.central_gov_salaries
+
+-- select count(*) from journalists.d_jobs
+
+Select entity_name , count(*) count, sum(total)/1000000 total, sum(salary)/1000000 salary
+  from journalists.f_employee_salary 
+  where record_id = 13
+ group by entity_name
+ order by 4 desc 
+
+
+
+
+/*
+
+
+ update journalists.central_gov_salaries
+   SET position = 'CONDUCTOR DE VEHICULO  II' 
+ where position = 'CONDUCTOR_DE VEHICULO II'
+
+
+SELECT entity, upper(position) position, count(*) as total, avg(salary) salary 
+FROM data_test.staging_central_gov_salaries where position not in (
+  SELECT job_title FROM journalists.d_jobs
+) GROUP BY entity, position
+ORDER BY SALARY DESC
+
+UPDATE journalists.central_gov_salaries ST
+   SET ST.position = tp.position_modified
+  FROM data_test.staging_jobs_diferences tp
+ WHERE ST.position = tp.position
+ 
+ update journalists.central_gov_salaries
+   SET position = 'CONDUCTOR DE VEHICULO  II' 
+ where position = 'CONDUCTOR_DE VEHICULO II'
+ 
+*/ 
+ 
 
 
 

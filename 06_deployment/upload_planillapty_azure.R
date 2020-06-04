@@ -15,3 +15,5 @@ src_path <- "./00_data/out/salaries/pending_process/april/central_gov_salaries_a
 upload_blob(cont, src_path, dest="/2020/april/central_gov_salaries_april.csv")
 
 
+src_path <- "./00_data/out/salaries/pending_process/febrary/miamb_gov_salaries_february.csv"
+upload_blob(cont, src_path, dest="/2020/febrary/miamb_gov_salaries_february.csv")
