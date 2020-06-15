@@ -24,6 +24,8 @@ get_outliers <- function(data_tbl){
 	
 	n_trees <- 100
 	isolation_forest_model <- h2o.isolationForest(
+		stopping_rounds = 3, # stopping_metric = "AUC",
+		stopping_tolerance = 1e-2,
 		training_frame = raw_cloud,
 		ntrees = n_trees, seed = 12345)
 	
