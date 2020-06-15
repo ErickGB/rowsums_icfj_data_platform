@@ -23,8 +23,9 @@ library(caTools) # split data
 library(factoextra) # fitting variables
 library(FactoMineR)
 library(caret) # improve model
+library(h20)
 
-
+source("./00_scripts/base_functions.R")
 PATH_IN <- "./00_data/in/covid"
 # ********************************************************************
 list_files <- list.files(PATH_IN)
@@ -140,13 +141,13 @@ d <- data.frame(x, y) %>%
 	filter(y > 0.25) %>% 
 	arrange(desc(y))
 d %>% 
-	head(10)
+	head(14)
 
-km_out[7]
+km_out[3]
 
 
 
-kms_res <- eclust(training_cluster_tbl, "kmeans", k = 7, nstart = 25, graph = FALSE)
+kms_res <- eclust(training_cluster_tbl, "kmeans", k = 5, nstart = 25, graph = FALSE)
 fviz_silhouette(kms_res, palette = "jco", ggtheme = theme_classic()) 
 
 

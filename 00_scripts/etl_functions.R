@@ -105,6 +105,26 @@ get_month_num_esp <- function(month_name_esp) {
 	return(month)
 }
 
+# geth_month_name(12)
+geth_month_name <- function(month_number){
+	month <- case_when(
+		month_number == 1 ~  "ene",
+		month_number == 2 ~  "feb",
+		month_number == 3 ~  "mar",
+		month_number == 4 ~  "abr",
+		month_number == 5 ~  "may",
+		month_number == 6 ~  "jun",
+		month_number == 7 ~  "jul",
+		month_number == 8 ~  "ago",
+		month_number == 9 ~  "sep",
+		month_number == 10 ~ "oct",
+		month_number == 11 ~ "nov",
+		month_number == 12 ~ "dic",
+		TRUE ~ as.character("error, not is a number")
+	)
+	return(month)
+}
+
 # get_date_esp("00/01/1900")
 # get_date_esp("01/10/2020")
 # get_date_esp("1999/12/22")

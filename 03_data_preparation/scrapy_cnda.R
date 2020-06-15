@@ -122,4 +122,5 @@ rm(count, date_end, date_start, date_time, PATH_OUT, record_text, time, url) # v
 gc()
 
 #
+h2o.shutdown()
 

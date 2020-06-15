@@ -28,6 +28,8 @@ install.packages("plotly")
 install.packages("networkD3")
 install.packages("treemap")
 install.packages("corrplot")
+install.packages("RColorBrewer")
+
 
 install.packages("roxygen2")
 install.packages("anomalize", dependencies = TRUE) # outliers detection
@@ -79,6 +81,10 @@ install.packages("FactoMineR") # correspondence analysis an CP analysis
 install.packages("ade4") # dudi.coa
 install.packages("factoextra")
 install.packages("h2o")
+
+# mlflow for model tracking
+install.packages("mlflow")
+mlflow::install_mlflow(python_version = "3.6")
 
 # string
 install.packages("stringdist")
@@ -140,6 +146,10 @@ devtools::install_github("wch/harbor")
 devtools::install_github("hrbrmstr/splashr") 
 install.packages("magick")
 
+if (!"remotes" %in% installed.packages()) {
+  install.packages("remotes")
+}
+remotes::install_github("thomas-neitmann/ggcharts", upgrade = "never")
 
 
 install.packages("distill")

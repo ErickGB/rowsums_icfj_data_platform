@@ -147,3 +147,117 @@ iFrame tableau
 
 
 
+
+
+
+
+
+
+
+
+
+registro_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/2020/april/central_gov_salaries_april.csv")
+
+registro_tbl <- registro_tbl %>% 
+	group_by(entity) %>% 
+	summarise(count = n(), total = sum(total_income)/1000000) %>% 
+	arrange(desc(total))
+
+sum(registro_tbl$total)
+
+write.csv(registro_tbl, "./00_data/out_registro.csv")
+
+
+temp_tbl <- as_tibble(query_results) %>% 
+	filter(entity == 'Caja de Seguro Social') %>% 
+	arrange(desc(total))
+
+sum(temp_tbl$total) # 26,206
+
+temp_tbl <- temp_tbl %>% 
+	mutate(
+		position_modified =  stringr::str_replace(position, " ", "_"), 
+		position_modified =  ifelse(position_modified == 'ALBAÃÂIL_JEFE', 'ALBANIL_JEFE', position_modified),
+		position_modified =  ifelse(position_modified == 'TECNOLOGO_EN RADIOLOG E IMÃ\u0083Â\u0081GENES I II', "TECNOLOGO_EN RADIOLOG E IMAGENES I II",position_modified),
+		position_modified =  ifelse(position_modified == 'CORREDOR_DE PRIMA DE ANTIGÃ\u0083Â\u009cEDAD', "CORREDOR_DE PRIMA DE ANTIGUEDAD",position_modified),
+		date = as.Date("2020-02-01", tryFormats = c('%Y-%m-%d'))
+	) %>% 
+	dplyr::select(entity, position, position_modified, date, total, salary)
+	
+# 1: Load principal table: staging_central_gov_salaries
+tryCatch(
+	{
+		job <- insert_upload_job("rowsums", "data_test", table = "staging_jobs_diferences", 
+														 values = temp_tbl, write_disposition = "WRITE_TRUNCATE")
+		status <- wait_for(job)
+	}, # end try
+	error=function(error_message) {
+		print(error_message)
+	}) 
+
+Autoridad de Turismo Panamá *
+	http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=24
+2020-05-13 02:49:02
+
+Autoridad Panameña de Seguridad de Alimentos
+http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&id=165
+2020-05-14 11:05:27
+
+Defensoría del Pueblo
+2020-04-29 01:34:46
+http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=54
+
+
+
+
+
+Autoridad de Protección al Consumidor
+http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=22
+2020-03-02 06:23:46
+
+Autoridad Nacional de los Servicios Públicos
+http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=33
+2020-03-10 05:08:56
+
+Dirección General de Contrataciones Públicas
+2020-03-13 01:37:36
+http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=56
+
+
+
+
+Autoridad Nacional para la Innovación Gubernamental
+http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&id=162
+2017-02-09 04:51:00
+
+
+
+
+Fiscalía de Cuentas
+2020-01-22 11:17:06
+http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=58
+
+
+Lotería Nacional de Beneficencia
+2020-01-10 05:00:11
+http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=82
+
+
+
+
+
+
+CSS
+2020-02-20 01:29:45
+http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=43
+
+
+ACP 
+http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=26
+2020-02-21 09:55:47
+
+
+Precios de paridad nacional
+http://www.energia.gob.pa/energia/wp-content/uploads/sites/2/2020/05/Precio-de-paridad-Precios-Históricos-20mayo2020.pdf
+
+
