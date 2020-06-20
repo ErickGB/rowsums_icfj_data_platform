@@ -15,47 +15,23 @@ PATH_OUT <- "./00_data/out/"
 sheet_start <- 2 
 finish_start <- 2 
 # ****************************************************
-pdf_raw_data <- staplr::get_fields(input_filepath = paste0(PATH_IN, "BOLETIN_3956-A.pdf"))
+#pdf_raw_data <- staplr::get_fields(input_filepath = paste0(PATH_IN, "BOLETIN_3956-A.pdf"))
+#pdf_raw_2 <- extract_tables(paste0(PATH_IN, "BOLETIN_3956-A.pdf"))
+#cen_tbl <- as.data.frame(pdf_raw_2[[1]])
+#cen_tbl <- rbind(cen_tbl, as.data.frame(pdf_raw_2[[2]]))
+#cen_tbl$type <- "CEN"
+
+
+# read lines 
 pdf_raw_data <- pdftools::pdf_text(paste0(PATH_IN, "BOLETIN_3956-A.pdf"))
 text_raw <- strsplit(pdf_raw_data, "\n")
-  head(text_raw[[64]], 20) # sheet number
+  head(text_raw[[6]], 5) # sheet number
 
-pdf_raw_2 <- extract_tables(paste0(PATH_IN, "BOLETIN_3956-A.pdf"))
-cen_tbl <- as.data.frame(pdf_raw_2[[1]])
-cen_tbl <- rbind(cen_tbl, as.data.frame(pdf_raw_2[[2]]))
-cen_tbl$type <- "CEN"
-
-defendor_tbl <- as.data.frame(pdf_raw_2[[3]])
-defendor_tbl <- rbind(defendor_tbl, as.data.frame(pdf_raw_2[[4]]))
-defendor_tbl$type <- "DEFENSOR"
-
-final_tbl <- as.data.frame(pdf_raw_2[[5]])
-cols <- c(10)
-for(i in 6:154)
-{
-	temp_tbl <- as.data.frame(pdf_raw_2[[i]])
-	cols <- c(cols, ncol(temp_tbl))
-	print(paste0("page: ", as.character(i)," cols: ", ncol(temp_tbl), " rows: ", nrow(temp_tbl)))
-	if(ncol(temp_tbl) == 10) {
-		final_tbl <- rbind(final_tbl, temp_tbl)
-	}
-}
-table(cols)
-colnames(final_tbl) <- c("area_org", "circuito",  "provincia", "orden", "posición", "cargo", "cedula", "nombre", "apellido_paterno", "apellido_materno")
-final_tbl %>% 
-	glimpse()
+  
+  
+  
 
 
-pdf_raw_2[[77]]
-pdf_raw_2[[78]]
-
-
-
-
-
-
-
-# 10.. no
 # *************************
 # CEN
 cen_raw <- text_raw[[4]]

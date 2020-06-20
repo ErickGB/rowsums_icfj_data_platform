@@ -121,6 +121,5 @@ rm(get_count, get_all_products) # functions
 rm(count, date_end, date_start, date_time, PATH_OUT, record_text, time, url) # variables
 gc()
 
-#
-h2o.shutdown()
+
 

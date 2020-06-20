@@ -47,7 +47,7 @@ get_css_employees <- function(page) {
 		print(paste0("start processing page:", as.character(page)))
 		body_html <- splash_local %>% 
 			splash_go(url_css) %>% 
-			splash_wait(5)
+			splash_wait(15)
 		
 		body_html <- body_html %>% 
 			splash_focus("#rec_f0_bot") %>% 
@@ -55,7 +55,7 @@ get_css_employees <- function(page) {
 			splash_send_keys("<Return>") %>% 
 			splash_focus("#brec_bot") %>% 
 			splash_send_keys("<Return>") %>% 
-			splash_wait(13) %>% 
+			splash_wait(15) %>% 
 			#splash_click(x = 62, y = 760) %>% 
 			splash_html() # splash_png() 
 		#body_html
@@ -156,9 +156,9 @@ get_css_employees <- function(page) {
 
 # Table with results 1 to 3456
 final_tbl <- tibble(
-	id = 1:3456,
-	entity = rep("CSS", 1, 3456),
-	site = rep(url_css, 1, 3456)
+	id = 1:3460,
+	entity = rep("CSS", 1, 3460),
+	site = rep(url_css, 1, 3460)
 )
 
 
@@ -196,7 +196,7 @@ body_html <- splash_local %>%
 time <- Sys.time()
 #plan("multiprocess")
 final_tbl_2 <- final_tbl %>%
-	filter(id %in% c(3084, 2815, 2538, 2483, 1736, 1277, 1006, 753, 414)) %>% 
+	#filter(id %in% c(3084, 2815, 2538, 2483, 1736, 1277, 1006, 753, 414)) %>% 
 	mutate(
 		records = furrr::future_map(id, get_css_employees) 
 	) # %>% unnest()
@@ -437,10 +437,13 @@ master_css_tbl <- employee_css_tbl %>%
 				 over_costs, departament) 
 
 
-master_css_tbl_2 <- rbind(master_css_tbl, final_master_css_tbl)
+#master_css_tbl_2 <- rbind(master_css_tbl, final_master_css_tbl)
 
+nrow(master_css_tbl)
+output_file_name <- paste0(PATH_OUT, "central_css_gov_salaries_", process_month,".csv")
+print(output_file_name)
 
-write.csv(master_css_tbl_2, paste0(PATH_OUT, "central_css_gov_salaries_", process_month,".csv"), row.names = FALSE) 
+write.csv(master_css_tbl, output_file_name, row.names = FALSE) 
 print(sum(master_css_tbl$over_costs, na.rm = TRUE))
 #rm(body_html, error_tbl, final_tbl)
 warnings() 
