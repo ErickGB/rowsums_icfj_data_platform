@@ -261,3 +261,77 @@ Precios de paridad nacional
 http://www.energia.gob.pa/energia/wp-content/uploads/sites/2/2020/05/Precio-de-paridad-Precios-Históricos-20mayo2020.pdf
 
 
+
+
+
+
+
+
+
+# *************************************
+# more data
+PATH_IN <- "./00_data/"
+
+# salary data
+education_tbl <- readr::read_csv(paste0(PATH_IN, "people_grade.csv")) 
+education_tbl$X1 <- NULL 
+
+education_tbl <- education_tbl %>% 
+	rename(codigo_2010 = codigo) %>% 
+	spread(key = grade, value = total)
+education_tbl[is.na(education_tbl)] <- 0
+education_tbl <- education_tbl %>% 
+	janitor::clean_names()
+
+panama_map_geojson@data <- left_join(panama_map_geojson@data, education_tbl, by = 'codigo_2010')
+panama_map_geojson@data %>% 
+	DataExplorer::plot_missing()
+
+# *************************************
+# more data
+PATH_IN <- "./00_data/"
+
+# salary data
+home_salary_tbl <- readr::read_csv(paste0(PATH_IN, "home_salary_tbl.csv")) 
+home_salary_tbl$X1 <- NULL 
+
+home_salary_tbl <- home_salary_tbl %>% 
+	rename(codigo_2010 = codigo) %>% 
+	spread(key = rango_salarial, value = hogares)
+home_salary_tbl[is.na(home_salary_tbl)] <- 0
+
+panama_map_geojson@data <- left_join(panama_map_geojson@data, home_salary_tbl, by = 'codigo_2010')
+panama_map_geojson@data %>% 
+	DataExplorer::plot_missing()
+
+
+# education data
+people_age_tbl <- readr::read_csv(paste0(PATH_IN, "people_age.csv"))
+people_age_tbl$X1 <- NULL 
+people_age_tbl %>% 
+	count(age_group_1)
+sum(people_age_tbl$total)
+
+
+menos_25 <- c('0-4', '5-9', '10-14', '15-19', '20-24')
+x25_45 <-   c('25-29', '30-34', '35-39', '40-44')
+x45_65 <-   c('45-49', '50-54', '55-59', '60-64')
+
+people_age_tbl <- people_age_tbl %>% 
+	rename(codigo_2010 = codigo) %>% 
+	mutate(
+		age_group = 'mas_65',
+		age_group = ifelse(age_group_1 %in% c(menos_25), 'menos_25',  age_group),
+		age_group = ifelse(age_group_1 %in% c(x25_45), 'x25_45',  age_group),
+		age_group = ifelse(age_group_1 %in% c(x45_65), 'x45_65',  age_group)
+		) %>% 
+	dplyr::select(codigo_2010, age_group, total) %>% 
+	group_by(codigo_2010, age_group) %>% 
+	summarise(total =sum(total)) %>% 
+	ungroup() %>% 
+	spread(key = age_group, value = total) %>% 
+	mutate(poblacion = menos_25 + x25_45 + x45_65 + mas_65)
+
+people_age_tbl
+(251541 + 1571293 +989183 +593796) - 3405813
+
