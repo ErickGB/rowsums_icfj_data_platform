@@ -32,11 +32,24 @@ bq_auth(path = "./00_scripts/rowsums-2198b8679813.json",
 				email = "gordon.erick@gmail.com", #gargle::gargle_oauth_email(),
 				cache = gargle::gargle_oauth_cache(),
 				use_oob = gargle::gargle_oob_default())
+bigquery_conn <- bigrquery::src_bigquery(project = "rowsums", dataset = "journalists")
+
 
 bigquery_conn <- bigrquery::src_bigquery(project = "rowsums", dataset = "trade")
 # List table names
 src_tbls(bigquery_conn)
 
+employees_tbl <- tbl(bigquery_conn, "journalists.f_employee_salary")
+employees_tbl <- employees_tbl %>%
+	filter(record_id == 4) %>%
+	select(person_id, entity_name, total, job_position, job_title, date_processed)
+show_query(employees_tbl)
+employees_tbl <- collect(employees_tbl)
+employees_tbl %>%
+	glimpse()
+write.csv(employees_tbl, "./00_data/out/salaries/prd/planilla_marzo.csv", row.names = FALSE)
+
+	
 categories_tbl <- tbl(bigquery_conn, "trade.dim_category")
 categories_tbl <- collect(categories_tbl)
 
