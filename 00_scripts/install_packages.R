@@ -81,6 +81,10 @@ install.packages("FactoMineR") # correspondence analysis an CP analysis
 install.packages("ade4") # dudi.coa
 install.packages("factoextra")
 install.packages("h2o")
+install.packages("C50")
+install.packages("rpart")
+install.packages("rpart.plot")
+
 
 # mlflow for model tracking
 install.packages("mlflow")

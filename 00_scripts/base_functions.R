@@ -395,7 +395,7 @@ plot_h2o_leaderboard <- function(h2o_leaderboard, order_by = c("auc", "logloss")
 extract_h2o_model_name_by_position <- function(h2o_leaderboard, n = 1) {
     
     model_name <- h2o_leaderboard %>%
-        as.tibble() %>%
+        as_tibble() %>%
         slice(n) %>%
         pull(model_id) 
     

@@ -24,9 +24,11 @@ css_tbl<- css_tbl %>%
 	dplyr::select(person_id, first_name, last_name, entity, position, start_date, salary, expenses, total_income)
 
 contrata_tbl<- contrata_tbl %>% 
+	mutate(start_date = as.Date(start_date, tryFormats = c("%d/%m/%Y"))) %>% 
 	dplyr::select(person_id, first_name, last_name, entity, position, start_date, salary, expenses, total_income)
 
 consumidor_tbl<- consumidor_tbl %>% 
+	mutate(start_date = as.Date(start_date, tryFormats = c("%d/%m/%Y"))) %>% 
 	dplyr::select(person_id, first_name, last_name, entity, position, start_date, salary, expenses, total_income)
 
 
@@ -104,6 +106,13 @@ prd_people_by_rol_tbl %>%
 nrow(prd_people)
 nrow(prd_people_by_rol_tbl)
 
+prd_people %>% 
+	glimpse()
+
+prd_people_by_rol_tbl %>% 
+	glimpse()
+
+
 rm(juventud2_tbl, juventud_tbl, directivaarea_tbl, ff_arrea_tbl, ff_nacional_tbl,
 	 directores1_tbl, directores2_tbl, directores3_tbl, defensor_tbl, cen_tbl)
 
@@ -122,6 +131,9 @@ planilla_tbl %>%
 planilla_marzo_2019$is_new <- "no"
 
 prd_people <- left_join(prd_people, planilla_tbl, by = 'person_id')
+prd_people <- left_join(prd_people, planilla_marzo_2019[, c("person_id", "is_new")], by = 'person_id')
+
+
 prd_all <- left_join(prd_people_by_rol_tbl, planilla_tbl, by = 'person_id')
 prd_all <- left_join(prd_all, planilla_marzo_2019[, c("person_id", "is_new")], by = 'person_id')
 #prd_all$is_new <- ifelse(is.na(prd_all$is_new), "yes", prd_all$is_new)
@@ -135,9 +147,42 @@ prd_all <- prd_all %>%
 	mutate(is_new = ifelse(start_date < as.Date("01-07-2019", "%d-%m-%Y") & is.na(is_new) # si la fecha es menor, pero no estaba en planilla en juni 19
 												 , "yes", is_new)) 
 	
+prd_people <- prd_people %>%
+	mutate(is_in = ifelse(is.na(salary), "fuera de planilla", "en planilla")) %>% # si no encuentra el salario, no lo ubico en la planilla
+	mutate(is_new = ifelse(start_date >= as.Date("01-07-2019", "%d-%m-%Y"), "yes", is_new)) %>% # si la fecha de inicio es mayor al 1 jul 19
+	mutate(is_new = ifelse(start_date < as.Date("01-07-2019", "%d-%m-%Y") & is.na(is_new) # si la fecha es menor, pero no estaba en planilla en juni 19
+												 , "yes", is_new))
+
+
+write.csv(prd_all, "./00_data/out/prd_all.csv", row.names = FALSE)
+write.csv(prd_people, "./00_data/out/prd_people.csv", row.names = FALSE)
+
+
+# ********************************************************************
+# googledrive authentication
+httr::set_config(httr::config(http_version = 0))
+# autentication - only one time
+bq_auth(path = "./00_scripts/rowsums-2198b8679813.json", 
+				email = "gordon.erick@gmail.com", #gargle::gargle_oauth_email(),
+				cache = gargle::gargle_oauth_cache(),
+				use_oob = gargle::gargle_oob_default())
+
+drive_auth(path = "./00_scripts/rowsums-2198b8679813.json")
+project <- "rowsums"
+
+projectid<-'rowsums'
+datasetid<-'journalists'
+bq_conn <-  dbConnect(bigquery(), 
+											project = projectid,
+											dataset = datasetid, 
+											use_legacy_sql = FALSE
+)
 
 
 
+job <- insert_upload_job("rowsums", "journalists", table = "prd_cen_planilla", 
+												 values = prd_all, write_disposition = "WRITE_TRUNCATE")
+wait_for(job)
 
 
 # ******************************************

@@ -47,27 +47,40 @@ master_tbl <- master_tbl %>%
 		letalidad = round(fallecido / cantidad, 4),
 		mortalidad = fallecido / sum(fallecido)
 	)  %>% 
-	mutate(corregimiento = stringr::str_trim(corregimiento, side = "both"))
+	mutate(
+		provincia = stringr::str_trim(provincia, side = "both"), 
+		corregimiento = stringr::str_trim(corregimiento, side = "both") 
+				 ) %>% 
+	mutate(objectid = paste0(provincia, "_", distrito ,"_", corregimiento)) 
 
 
 master_tbl %>% 
 	glimpse()
 
-master_tbl  %>% 
+summary_tbl <- master_tbl  %>% 
 	group_by(date) %>% 
 	summarise(
 		across(cantidad:recuperado, sum, na.rm = TRUE),
-		mean_letalidad = mean(letalidad, na.rm = TRUE)
-		) %>% head(20)
+		mean_letalidad = mean(letalidad, na.rm = TRUE), .groups = 'drop'
+		) 
+View(summary_tbl)
 
-
+summary_tbl <- master_tbl  %>% 
+	mutate(key = paste0(provincia, "_", distrito, "_", corregimiento)) %>% 
+	group_by(key, date) %>% 
+	summarise(
+		across(cantidad:recuperado, sum, na.rm = TRUE),
+		mean_letalidad = mean(letalidad, na.rm = TRUE), .groups = 'drop'
+	) 
+View(summary_tbl)
+write.csv(summary_tbl, paste0(PATH_OUT, "/covid_daily_cluster_key.csv"), row.names = FALSE)
 
 
 # start mlFlow 
 with(mlflow_start_run(), { 
 	# mlFlow parameters
 	first_date <- min(master_tbl$date)
-	last_date <- min(master_tbl$date)
+	last_date <- max(master_tbl$date)
 	mlflow_param("first_date", first_date, "string")
 	mlflow_param("last_date", last_date, "string")
 	message(paste("First date:", first_date))
@@ -86,27 +99,30 @@ with(mlflow_start_run(), {
 		filter(cantidad <= 0 | is.na(cantidad)) %>% 
 		mutate(cluster = 100)
 	
-	# 
+	# join start with final
 	master_tbl <- left_join(master_tbl, start_tbl, by = 'objectid') %>% 
+		filter(date == last_date) %>% 
 		mutate(
 		diferencia = cantidad - cantidad_original,
 		porcentaje_diferencia = round( ((cantidad - cantidad_original)/cantidad_original) * 100, 2)
-		)
-	
-	
+		)  %>% 
+		mutate(corregimiento_original = corregimiento) %>% 
+		janitor::clean_names() 
+
 	# data clear
-	master_tbl <- master_tbl %>% 
-		janitor::clean_names() %>% 
-		filter(date == last_date) 
 	master_tbl[is.na(master_tbl)] <- 0
 	original_tbl <- master_tbl
+	original_tbl <- original_tbl 
 	
 	master_tbl <- master_tbl %>% 
 		filter(cantidad > 0) 
 	
+	nrow(master_tbl)
+	nrow(sin_casos_tbl)	
+	
 	
 	master_tbl %>% 
-		filter(corregimiento != corregimiento_original) %>% 
+		filter(corregimiento != corregimiento_original | is.na(corregimiento_original) ) %>% 
 		select(objectid, corregimiento_original, corregimiento)
 	
 	#write.csv(master_tbl, paste0(PATH_OUT, "out_reference_covid.csv"), row.names = FALSE)
@@ -161,9 +177,9 @@ with(mlflow_start_run(), {
 	message(paste("Outlier 1", as.character(out$n[2])))
 	train_normalized_tbl <- train_tbl[, 2:ncol(train_tbl)]
 	
-	train_tbl$outlier <- outliers_lst 
-	master_tbl$outlier <- outliers_lst 
-	train_normalized_tbl$outlier <- outliers_lst 
+	train_tbl$outlier <- 0#outliers_lst 
+	master_tbl$outlier <- 0#outliers_lst 
+	train_normalized_tbl$outlier <- 0#outliers_lst 
 	
 	outliers_tbl <- train_tbl %>% 
 		filter(outlier == 1)
@@ -292,10 +308,16 @@ with(mlflow_start_run(), {
 			cluster = as.integer(kms_res$cluster)
 		) %>% 
 		dplyr::select(objectid, cluster) %>% 
-		bind_rows(outliers_join_tbl) %>% 
+		#bind_rows(outliers_join_tbl) %>% 
 		bind_rows(sin_casos_tbl[, c("objectid", "cluster")]) %>% 
 		left_join(., y = cluster_review_tbl, by = 'cluster' ) 
+
 	
+	original_tbl %>% 
+		glimpse()
+	
+	final_tbl %>% 
+		glimpse()
 	
 	final_tbl <- left_join(original_tbl, final_tbl, by = 'objectid') %>% 
 		mutate(letalidad = round(letalidad * 100, 2))
@@ -317,14 +339,66 @@ with(mlflow_start_run(), {
 	final_tbl %>% 
 		glimpse()
 	
+	sum(final_tbl$cantidad)
+	
 })	
 
 #mlflow::mlflow_end_run()
 mlflow::mlflow_ui()	
 	
-write.csv(final_tbl, paste0(PATH_OUT, "/out_cluster_covid.csv"), row.names = FALSE)
-h2o.shutdown()
+PATH_OUT
+write.csv(final_tbl, paste0(PATH_OUT, "/cluster_covid.csv"), row.names = FALSE)
+#h2o.shutdown()
 
+# ************************
+# Tree analysis 
+library(C50)
+model_tree <- C50::C5.0(final_tbl[, c("cantidad", "hospitalizado", 
+																			"fallecido", "uci", "letalidad")], as.factor(final_tbl$cluster))
+summary(model_tree)
+plot(model_tree)
+
+#cantidad <= 0: 100 (340)
+#cantidad > 0:
+#	:...cantidad <= 77: 3 (273)
+#cantidad > 77:
+#	:...cantidad <= 222: 4 (24)
+#cantidad > 222:
+#	:...cantidad <= 365:
+#	:...uci <= 4: 2 (12)
+#:   uci > 4: 99 (2)
+#cantidad > 365:
+#	:...cantidad <= 545: 6 (13/2)
+#cantidad > 545:
+#	:...cantidad > 719: 99 (8/1)
+#cantidad <= 719:
+#	:...cantidad <= 588: 99 (2)
+#cantidad > 588: 5 (4)
+
+
+# Load rpart and rpart.plot
+library(rpart)
+library(rpart.plot)
+# Create a decision tree model
+tree_data_tbl <- final_tbl %>% 
+	mutate(cluster = as.factor(cluster)) %>% 
+	select(cluster, cantidad, hospitalizado, fallecido, uci, letalidad)
+
+tree <- rpart(cluster~., data=tree_data_tbl, cp=.02)
+# Visualize the decision tree with rpart.plot
+rpart.plot(tree, type = 2, yesno=2, box.palette="RdBu", shadow.col="gray", nn=TRUE)
+
+#1) root 728 352 100 (0.019 0.0014 0.049 0.36 0.022 0.0069 0.023 0.52)  
+#2) cantidad>=0.5 348  89 4 (0.04 0.0029 0.092 0.74 0.046 0.014 0.049 0.011)  
+#4) cantidad>=71.5 75  43 3 (0.19 0.013 0.43 0 0.21 0.067 0.067 0.027)  
+#8) cantidad< 238 34   2 3 (0 0 0.94 0 0 0 0 0.059) *
+#	9) cantidad>=238 41  25 5 (0.34 0.024 0 0 0.39 0.12 0.12 0)  
+#18) cantidad>=428 24  10 1 (0.58 0.042 0 0 0 0.21 0.17 0) *
+#	19) cantidad< 428 17   1 5 (0 0 0 0 0.94 0 0.059 0) *
+#	5) cantidad< 71.5 273  14 4 (0 0 0 0.95 0 0 0.044 0.0073)  
+#10) letalidad< 13.81 261   2 4 (0 0 0 0.99 0 0 0 0.0077) *
+#	11) letalidad>=13.81 12   0 99 (0 0 0 0 0 0 1 0) *
+#	3) cantidad< 0.5 380   8 100 (0 0 0.011 0.011 0 0 0 0.98) *
 
 
 # ************************
