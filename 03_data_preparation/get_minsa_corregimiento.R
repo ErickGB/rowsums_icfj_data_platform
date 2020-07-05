@@ -2,6 +2,9 @@ cat("\014")
 gc() # garbage collector
 # ****************************
 library(tidyverse)
+library(tidyverse) # Main Package - Loads dplyr, purrr
+library(AzureStor)
+
 PATH_OUT <- "./00_data/in/covid/"
 date_name <- Sys.Date()
 

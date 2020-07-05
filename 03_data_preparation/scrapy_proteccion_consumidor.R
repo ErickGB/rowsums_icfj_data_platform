@@ -147,7 +147,7 @@ unclass(page_date)
 # que fecha de actualización tiene
 # de que mes es el dato (fecha actualización - 1 mes)
 
-execution_date <- as.character(Sys.Date()) # process execution day
+execution_date <- as.character(Sys.Date()-1) # process execution day
 execution_month <- paste0(substr(execution_date, 1, 8), "01") # execution month
 
 update_date <- as.Date(page_date)  # data of the month ...
@@ -308,7 +308,7 @@ master_tbl %>%
 	glimpse()
 
 
-ouput_path <- paste0(PATH_OUT, update_year, "/",  update_month, output_file_name, paste0(update_month, "_",update_year)  ,"_processed_", execution_date,".csv")
+ouput_path <- paste0(PATH_OUT, update_year, "/",  update_month, "/", output_file_name, paste0(update_month, "_",update_year)  ,"_processed_", execution_date,".csv")
 ouput_path
 write.csv(master_tbl, ouput_path, row.names = FALSE) 
 # total time

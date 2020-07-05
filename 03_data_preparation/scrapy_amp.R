@@ -11,7 +11,8 @@ library(furrr)     # Parallel Processing using purrr (iteration)
 # ***************************************************************************
 url <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=31"
 PATH_OUT <- "./00_data/out/salaries/"
-
+entity_name <- "Autoridad Marítima de Panamá"
+	
 # ***********************************************
 # functions ----
 source("00_scripts/etl_functions.R")
@@ -93,6 +94,30 @@ get_amp_employee <- function(url) {
 	)
 	return(row_tbl)
 }
+
+
+# ***********************************************
+# dates
+
+execution_date <- as.character(Sys.Date()) # process execution day
+execution_month <- paste0(substr(execution_date, 1, 8), "01") # execution month
+
+update_date <- as.Date(page_date)  # data of the month ...
+update_month <- tolower(month.name[as.integer(paste0(substr(update_date, 6, 7)))])
+update_year <- as.integer(substr(page_date, 1, 4))
+
+data_date <- as.Date(paste0(substr(page_date, 1, 4), "/", substr(page_date, 6, 7), "/01"), 
+										 tryFormats = c("%Y/%m/%d")) - as.difftime(1, unit = "days")
+data_month <- tolower(month.name[as.integer(paste0(substr(data_date, 6, 7)))])
+
+# dates 
+page_date       # page -> last update
+update_date     # page -> last update in date format
+
+data_date       # What month of payment correspond .. last_date - 1 month
+execution_date  # when I run the data extraction
+
+
 
 
 # ***********************************************
@@ -227,7 +252,7 @@ master_tbl <- final_tbl %>%
 		count_words = map_chr(complete_name, get_count_words),
 		first_name = map_chr(complete_name, get_first_name),
 		last_name = map_chr(complete_name, get_last_name),
-		code = code_id,
+		#code = code_id,
 		entity = entity_name,
 		departament = "unknow",
 		#key = paste(person_id, as.character(start_date), position, sep = "_"),

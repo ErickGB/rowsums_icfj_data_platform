@@ -148,7 +148,7 @@ unclass(page_date)
 # que fecha de actualización tiene
 # de que mes es el dato (fecha actualización - 1 mes)
 
-execution_date <- as.character(Sys.Date()) # process execution day
+execution_date <- as.character(Sys.Date()-1) # process execution day
 execution_month <- paste0(substr(execution_date, 1, 8), "01") # execution month
 
 update_date <- as.Date(page_date)  # data of the month ...

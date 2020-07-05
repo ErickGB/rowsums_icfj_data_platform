@@ -14,6 +14,8 @@ require(knitr)
 source("./00_scripts/base_functions.R")
 PATH_IN <- "./00_data/in/covid"
 PATH_OUT <- "./00_data/out/covid"
+# 24 junio - destituyen a turner
+
 
 # ********************************************************************
 # load data ----
@@ -51,7 +53,8 @@ master_tbl <- master_tbl %>%
 		provincia = stringr::str_trim(provincia, side = "both"), 
 		corregimiento = stringr::str_trim(corregimiento, side = "both") 
 				 ) %>% 
-	mutate(objectid = paste0(provincia, "_", distrito ,"_", corregimiento)) 
+	mutate(objectid = paste0(provincia, "_", distrito ,"_", corregimiento)) %>% 
+	filter(date <= as.Date("2020-06-30", tryFormats = c("%Y-%m-%d")) )
 
 
 master_tbl %>% 
@@ -145,6 +148,7 @@ with(mlflow_start_run(), {
 	mean(master_tbl$letalidad, na.rm = TRUE)
 	
 	master_tbl %>% 
+		mutate(cantidad = aislamiento_domiciliario) %>% 
 		dplyr::select(objectid, cantidad, hospitalizado, fallecido, uci, diferencia, porcentaje_diferencia) %>% 
 		DataExplorer::plot_missing()
 	
@@ -287,12 +291,12 @@ with(mlflow_start_run(), {
 	cluster_review_tbl
 	
 	#cluster avg_sil_width
-	#1       1         0.724
-	#2       2         0.721
-	#3       3         0.567
-	#4       6         0.537
-	#5       5         0.480
-	#6       4         0.433
+	#<int>         <dbl>
+  #1       5         0.880
+	#2       4         0.751
+	#3       3         0.582
+	#4       1         0.566
+	#5       2         0.461
 	
 	# ************************
 	# 
@@ -350,10 +354,12 @@ PATH_OUT
 write.csv(final_tbl, paste0(PATH_OUT, "/cluster_covid.csv"), row.names = FALSE)
 #h2o.shutdown()
 
+
+#final_tbl <- readr::read_csv(paste0(PATH_OUT, "/cluster_covid.csv"))
 # ************************
 # Tree analysis 
 library(C50)
-model_tree <- C50::C5.0(final_tbl[, c("cantidad", "hospitalizado", 
+model_tree <- C50::C5.0(final_tbl[, c("aislamiento_domiciliario", "hospitalizado", 
 																			"fallecido", "uci", "letalidad")], as.factor(final_tbl$cluster))
 summary(model_tree)
 plot(model_tree)
@@ -382,7 +388,7 @@ library(rpart.plot)
 # Create a decision tree model
 tree_data_tbl <- final_tbl %>% 
 	mutate(cluster = as.factor(cluster)) %>% 
-	select(cluster, cantidad, hospitalizado, fallecido, uci, letalidad)
+	select(cluster, aislamiento_domiciliario, hospitalizado, fallecido, uci, letalidad)
 
 tree <- rpart(cluster~., data=tree_data_tbl, cp=.02)
 # Visualize the decision tree with rpart.plot
@@ -428,13 +434,15 @@ View(summary_tbl)
 #print(kable(summary_tbl))
 
 #scatter plot cluster por hospitalizado vs fallecido 
-final_tbl %>% 
+pscatter <- final_tbl %>% 
 	ggplot(aes(x = hospitalizado, y = fallecido)) +
 	geom_point(aes(color = as.factor(cluster), size = cantidad), alpha = 0.8) + 
 	facet_wrap(~ cluster)
 
+plotly::ggplotly(pscatter)
+
 final_tbl %>% 
-	ggplot(aes(x = hospitalizado, y = uci)) +
+	ggplot(aes(x = letalidad, y = uci)) +
 	geom_point(aes(color = cluster, size = cantidad), alpha = 0.8) + 
 	facet_wrap(~ cluster)
 

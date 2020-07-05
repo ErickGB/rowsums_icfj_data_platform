@@ -440,6 +440,7 @@ View(master_tbl)
  
 nrow(master_tbl) # 157426
 paste0(PATH_PROCESS_OUT,  actual_month, "/",  "central_gov_salaries_", actual_month,".csv")
+
 write.csv(master_tbl, 
 					paste0(PATH_PROCESS_OUT,  actual_month, "/",  "central_gov_salaries_", actual_month,".csv")
 					, row.names = FALSE) 
