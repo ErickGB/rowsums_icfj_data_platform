@@ -423,7 +423,7 @@ master_tbl <- final_tbl %>%
 		position = cargo, salary = salario, expenses = gasto, total_income = total, status = estado, 
 		start_date = fecha_inicio, first_name = primer_nombre, entity = entidad, update_date = last_update
 		)  %>%	
-	select(code, complete_name, last_name, person_id, position, salary, expenses, total_income, status, 
+	dplyr::select(code, complete_name, last_name, person_id, position, salary, expenses, total_income, status, 
 									start_date, first_name, entity, update_date, sex, url, record_date, key, 
 				 over_costs, departament) 
 

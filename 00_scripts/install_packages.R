@@ -62,10 +62,14 @@ install.packages("mvoutlier") #outliers
 
 
 # Geo and plots 
+install.packages("protolite")
+install.packages("geojson")
+
 install.packages("OpenStreetMap")
 install.packages("PBmapping")
+install.packages("RPostgres")
 install.packages("spdplyr") #  makes it possible to use the main dplyr verbs
-install.packages("geojsonio") # Convert to GeoJSON
+install.packages("geojsonio", dependencies = TRUE) # Convert to GeoJSON
 install.packages("rmapshaper") # Simplify GeoJSON file
 install.packages("lawn") # view out the coordinates values
 install.packages("classInt") # jenks intervals
@@ -74,7 +78,17 @@ install.packages("leaflet")
 # spatial entropy 
 install.packages("SpatEntropy")
 install.packages("googleway") # Google API keys
-install.packages("tidytransit") # Google GTFS (paradas) 
+install.packages("tidytransit") # Google GTFS (paradas)
+install.packages("FNN")
+# ********************************************
+# in terminal
+# sudo add-apt-repository -y ppa:opencpu/jq
+# sudo apt-get update
+# sudo apt-get install libjq-dev
+
+install.packages("jqr")
+install.packages("googleway") # google places 
+# ********************************************
 
 # analysis
 install.packages("FactoMineR") # correspondence analysis an CP analysis

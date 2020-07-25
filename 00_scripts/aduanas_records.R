@@ -88,7 +88,7 @@ get_all_products <- function(url) {
 				),
 			source = NULL
 			) %>% 
-		select(date, RUC, company, origin, description, key, text_original)
+		dplyr::select(date, RUC, company, origin, description, key, text_original)
 	
 	# ***********************************************************
 	# detail table ----
@@ -131,7 +131,7 @@ get_all_products <- function(url) {
 			)
 	
 	variables_tbl <- variables_tbl %>% 
-		select(key, fields, data_processed) %>% 
+		dplyr::select(key, fields, data_processed) %>% 
 		spread(key = fields, value = data_processed) %>% 
 		janitor::clean_names()
 	

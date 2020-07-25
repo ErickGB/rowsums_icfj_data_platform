@@ -53,8 +53,8 @@ master_tbl <- master_tbl %>%
 		provincia = stringr::str_trim(provincia, side = "both"), 
 		corregimiento = stringr::str_trim(corregimiento, side = "both") 
 				 ) %>% 
-	mutate(objectid = paste0(provincia, "_", distrito ,"_", corregimiento)) %>% 
-	filter(date <= as.Date("2020-06-30", tryFormats = c("%Y-%m-%d")) )
+	mutate(objectid = paste0(provincia, "_", distrito ,"_", corregimiento)) #%>% 
+	filter(date <= as.Date("2020-07-08", tryFormats = c("%Y-%m-%d")) )
 
 
 master_tbl %>% 
@@ -65,17 +65,25 @@ summary_tbl <- master_tbl  %>%
 	summarise(
 		across(cantidad:recuperado, sum, na.rm = TRUE),
 		mean_letalidad = mean(letalidad, na.rm = TRUE), .groups = 'drop'
-		) 
+		) %>% 
+	mutate(
+		perc_uci = (uci / cantidad) ,
+		perc_hosp = (hospitalizado / cantidad),
+		per_domiciliario = (aislamiento_domiciliario / cantidad)
+	)
 View(summary_tbl)
 
 summary_tbl <- master_tbl  %>% 
 	mutate(key = paste0(provincia, "_", distrito, "_", corregimiento)) %>% 
+	mutate(key = iconv(key, from = 'UTF-8', to = 'ASCII//TRANSLIT')) %>% 
 	group_by(key, date) %>% 
 	summarise(
 		across(cantidad:recuperado, sum, na.rm = TRUE),
 		mean_letalidad = mean(letalidad, na.rm = TRUE), .groups = 'drop'
 	) 
 View(summary_tbl)
+summary_tbl %>% 
+	glimpse()
 write.csv(summary_tbl, paste0(PATH_OUT, "/covid_daily_cluster_key.csv"), row.names = FALSE)
 
 
@@ -126,7 +134,7 @@ with(mlflow_start_run(), {
 	
 	master_tbl %>% 
 		filter(corregimiento != corregimiento_original | is.na(corregimiento_original) ) %>% 
-		select(objectid, corregimiento_original, corregimiento)
+		dplyr::select(objectid, corregimiento_original, corregimiento)
 	
 	#write.csv(master_tbl, paste0(PATH_OUT, "out_reference_covid.csv"), row.names = FALSE)
 	master_tbl %>% 
@@ -155,7 +163,7 @@ with(mlflow_start_run(), {
 	
 	# create train data 
 	train_tbl <- master_tbl %>% 
-		dplyr::select(objectid, cantidad, hospitalizado, fallecido, uci, letalidad)
+		dplyr::select(objectid, cantidad, hospitalizado, fallecido, uci, letalidad) # 
 	train_tbl[is.na(train_tbl)] <- 0
 	
 	#train_tbl$porcentaje_diferencia <- ifelse(is.infinite(train_tbl$porcentaje_diferencia)
@@ -169,6 +177,9 @@ with(mlflow_start_run(), {
 	train_normalized_tbl<- apply(train_tbl[complete.cases(train_tbl),2:ncol(train_tbl)], MARGIN=2, 
 															 FUN=set_range_standarize_process) %>% 
 		as_tibble() 
+	
+	print(train_normalized_tbl %>% 
+		head())
 	
 	# **********************************************************************
 	# clean outliers 
@@ -337,15 +348,16 @@ with(mlflow_start_run(), {
 	
 	
 	# summary
-	viz_result
-	cluster_review_tbl
-	table(final_tbl$cluster)
-	final_tbl %>% 
-		glimpse()
-	
-	sum(final_tbl$cantidad)
-	
 })	
+
+viz_result
+cluster_review_tbl
+table(final_tbl$cluster)
+final_tbl %>% 
+	glimpse()
+
+sum(final_tbl$cantidad)
+
 
 #mlflow::mlflow_end_run()
 mlflow::mlflow_ui()	
@@ -364,22 +376,21 @@ model_tree <- C50::C5.0(final_tbl[, c("aislamiento_domiciliario", "hospitalizado
 summary(model_tree)
 plot(model_tree)
 
-#cantidad <= 0: 100 (340)
-#cantidad > 0:
-#	:...cantidad <= 77: 3 (273)
-#cantidad > 77:
-#	:...cantidad <= 222: 4 (24)
-#cantidad > 222:
-#	:...cantidad <= 365:
-#	:...uci <= 4: 2 (12)
-#:   uci > 4: 99 (2)
-#cantidad > 365:
-#	:...cantidad <= 545: 6 (13/2)
-#cantidad > 545:
-#	:...cantidad > 719: 99 (8/1)
-#cantidad <= 719:
-#	:...cantidad <= 588: 99 (2)
-#cantidad > 588: 5 (4)
+#Decision tree:  9.9% error
+#	aislamiento_domiciliario <= 0:
+#	:...fallecido <= 0: 100 (345/53)
+#:   fallecido > 0: 4 (9)
+#aislamiento_domiciliario > 0:
+#	:...aislamiento_domiciliario <= 79: 4 (264/8)
+#aislamiento_domiciliario > 79:
+#	:...aislamiento_domiciliario > 261:
+#	:...aislamiento_domiciliario <= 563: 2 (17/3)
+#:   aislamiento_domiciliario > 563: 1 (6)
+#aislamiento_domiciliario <= 261:
+#	:...fallecido > 7: 5 (13/1)
+#fallecido <= 7:
+#	:...aislamiento_domiciliario <= 180: 3 (20/1)
+#aislamiento_domiciliario > 180: 5 (5/1)
 
 
 # Load rpart and rpart.plot
@@ -388,7 +399,7 @@ library(rpart.plot)
 # Create a decision tree model
 tree_data_tbl <- final_tbl %>% 
 	mutate(cluster = as.factor(cluster)) %>% 
-	select(cluster, aislamiento_domiciliario, hospitalizado, fallecido, uci, letalidad)
+	dplyr::select(cluster, aislamiento_domiciliario, hospitalizado, fallecido, uci, letalidad)
 
 tree <- rpart(cluster~., data=tree_data_tbl, cp=.02)
 # Visualize the decision tree with rpart.plot
@@ -466,25 +477,30 @@ final_tbl %>%
 
 
 # visualización en 3D usando Plotly (otra librería)
+c('#4575b4', '#74add1', '#abd9e9', '#e0f3f8', 
+	'#ffffbf', '#fee090', '#fdae61', '#f46d43', 
+	'#d73027', '#4d4d4d')
+
 library(plotly)
 final_tbl$cluster <- as.factor(final_tbl$cluster)
-fig <- plot_ly(final_tbl, x = ~hospitalizado, y = ~fallecido, z = ~letalidad,  opacity = 0.8, # size = ~cantidad,
+fig <- plot_ly(final_tbl, ~hospitalizado, ~fallecido,  ~letalidad,  opacity = 0.8, # size = ~cantidad,
 							 text = ~paste('Correg:', corregimiento,    "(cluster: ", as.character(cluster), ") ",  
 							 							"<br>Hospit. ", as.character(hospitalizado), " Fallec. ", as.character(fallecido), 
 							 							" UCI ", as.character(uci), " Letalidad ", as.character(letalidad)),
-							 color = ~cluster, colors = c('#4575b4', '#74add1', '#abd9e9', '#e0f3f8', 
-							 														 '#ffffbf', '#fee090', '#fdae61', '#f46d43', 
-							 														 '#d73027', '#4d4d4d')) 
+							 color = ~cluster, colors = c('#a50026', '#f46d43', '#f46d43', '#fee090', 
+							 														 '#fee090', '#e0f3f8', '#74add1', '#4575b4', 
+							 														 '#4d4d4d', '#4d4d4d')) 
 fig <- fig %>%
-	add_markers() %>% 
+	#add_markers() %>% 
 	layout(
 		title = "Clúster casos de covid en Panamá",
 		scene = list(xaxis = list(title = 'x = Hospitalizados'),
 								 yaxis = list(title = 'y = Fallecidos'),
-								 zaxis = list(title = 'z = Letalidad'))
+								 zaxis = list(title = 'z = % Letalidad'))
 	)
 fig
 
+'#74add1', 
 
 # fallecidos y uci por cluster 
 final_tbl %>%
