@@ -15,18 +15,18 @@ library(stringr)
 library(DataExplorer)
 
 # ***********************************************
-PATH_OUT <- "./00_data/out/imports/" 
-date_start <- "2020-04-01"
-date_end <- "2020-04-30"
+date_start <- "2020-07-01"
+date_end <- "2020-07-31"
+year <- substr(date_end, 1, 4)
 record_type <- "I" # I = Imports, E = exports 
 file_type <- ifelse(record_type == "I", "imports", "exports")
+PATH_OUT <- paste0("./00_data/out/", file_type, "/") 
 page_record <- ifelse(record_type == "I", 5000, 1000)
 
 date_time <- as.character(Sys.Date()) # process execution day
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
 process_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
-
 
 source("./00_scripts/aduanas_records.R")
 
@@ -48,9 +48,6 @@ url <- paste0("http://190.34.178.196/aduana/SIGA_SICE/index.php?calendario_desde
 session <- html_session(url)
 
 
-
-
-
 # number of records
 record_text <- session %>% 
 	rvest::html_nodes(css = 'div[id="areaMainCont"]') %>% 
@@ -64,7 +61,6 @@ record_text <- session %>%
 	str_replace(pattern = " ", "") %>% 
 	str_trim(side = "both")
 rm(session)
-
 record_text # number of records
 
 # table for get data
@@ -73,10 +69,13 @@ records_tbl <- tibble(id = c(0, seq(1, count)))
 records_tbl <- records_tbl %>% 
 	mutate(link = paste0(url, "&np=", id))
 records_tbl$link <- ifelse(records_tbl$id == 0, url, records_tbl$link)
-records_tbl
+if(count == 0) {
+	records_tbl <- records_tbl[1,]
+}
 
 
 # srapy data (it's slowww, large number of records have been downloaded)
+date_end
 time <- Sys.time()
 time
 #plan("multiprocess")
@@ -105,21 +104,39 @@ print(records_tbl$link[1])
 records_tbl %>% 
 	DataExplorer::plot_missing()
 
-
+nrow(records_tbl)
 table(records_tbl$date)
 record_text
+
+
 table(substr(records_tbl$peso_neto, nchar(records_tbl$peso_neto) - 1, nchar(records_tbl$peso_neto)))
+paste0(PATH_OUT, "out_", file_type, "_", date_end,".csv")
 
 # save montly file 
-paste0(PATH_OUT, "out_", file_type, "_", date_end,".csv")
+file_type <- ifelse(record_type == "I", "import", "export")
 write.csv(records_tbl, #fileEncoding = "UTF-8",
-	paste0(PATH_OUT, "out_", file_type, "_", date_end,".csv"), row.names = FALSE)
+	paste0(PATH_OUT, "out_", file_type, "_", date_end,".csv"), 
+	row.names = FALSE, na = '')
 
+# *******************************************************************************
+# upload azure 
+source("./00_scripts/azure_functions.R")
 
-rm(records_tbl) # data tables
-rm(get_count, get_all_products) # functions
-rm(count, date_end, date_start, date_time, PATH_OUT, record_text, time, url) # variables
+# upload data to azure
+set_load_data_az(
+	"ctrade",
+	paste0("./00_data/out/", file_type,"s/"),
+	paste0("/", file_type,"/", year,"/"), 
+	paste0("out_", file_type, "_", date_end,".csv")
+	)
+
+# **************************
+# remove all variables 
+rm(list=ls()) 
 gc()
+#flete chavale de aguadulce 
+
+
 
 
 

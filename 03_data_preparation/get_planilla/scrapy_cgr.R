@@ -432,11 +432,7 @@ master_fail_tbl <- master_tbl %>%
 
 master_tbl <- master_tbl %>% 
 	filter(is.na(start_date) == FALSE) 
-
-master_tbl %>% 
-	glimpse()
-
-View(master_tbl)
+View(master_tbl[1:20,])
  
 nrow(master_tbl) # 157426
 paste0(PATH_PROCESS_OUT,  actual_month, "/",  "central_gov_salaries_", actual_month,".csv")
@@ -446,6 +442,10 @@ write.csv(master_tbl,
 					, row.names = FALSE) 
 table(master_tbl$update_date)
 max(as.Date(master_tbl$start_date, tryFormats = c("%d/%m/%Y")), na.rm = TRUE)
+
+master_tbl %>% 
+	glimpse()
+
 
 # 2020-03-01 
 #     149466 

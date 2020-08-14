@@ -27,8 +27,6 @@ get_amp_employee <- function(url) {
 	table_html <- body_html %>% 
 		rvest::html_nodes(xpath = '//table')
 	
-	
-	
 	rows <- table_html[4] %>% 
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr')
@@ -59,28 +57,28 @@ get_amp_employee <- function(url) {
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr') %>% 
 		.[2:rows] %>% 
-		rvest::html_nodes(xpath = 'td[6]') %>% 
+		rvest::html_nodes(xpath = 'td[5]') %>% 
 		rvest::html_text()
 	
 	psalary <-  table_html[4] %>% 
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr') %>% 
 		.[2:rows] %>% 
-		rvest::html_nodes(xpath = 'td[8]') %>% 
+		rvest::html_nodes(xpath = 'td[6]') %>% 
 		rvest::html_text()
 	
 	pexpenses <-  table_html[4] %>% 
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr') %>% 
 		.[2:rows] %>% 
-		rvest::html_nodes(xpath = 'td[9]') %>% 
+		rvest::html_nodes(xpath = 'td[7]') %>% 
 		rvest::html_text()
 	
 	ptotal <-  table_html[4] %>% 
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr') %>% 
 		.[2:rows] %>% 
-		rvest::html_nodes(xpath = 'td[10]') %>% 
+		rvest::html_nodes(xpath = 'td[8]') %>% 
 		rvest::html_text()
 	
 	row_tbl <- tibble(
@@ -94,31 +92,6 @@ get_amp_employee <- function(url) {
 	)
 	return(row_tbl)
 }
-
-
-# ***********************************************
-# dates
-
-execution_date <- as.character(Sys.Date()) # process execution day
-execution_month <- paste0(substr(execution_date, 1, 8), "01") # execution month
-
-update_date <- as.Date(page_date)  # data of the month ...
-update_month <- tolower(month.name[as.integer(paste0(substr(update_date, 6, 7)))])
-update_year <- as.integer(substr(page_date, 1, 4))
-
-data_date <- as.Date(paste0(substr(page_date, 1, 4), "/", substr(page_date, 6, 7), "/01"), 
-										 tryFormats = c("%Y/%m/%d")) - as.difftime(1, unit = "days")
-data_month <- tolower(month.name[as.integer(paste0(substr(data_date, 6, 7)))])
-
-# dates 
-page_date       # page -> last update
-update_date     # page -> last update in date format
-
-data_date       # What month of payment correspond .. last_date - 1 month
-execution_date  # when I run the data extraction
-
-
-
 
 # ***********************************************
 # Save images

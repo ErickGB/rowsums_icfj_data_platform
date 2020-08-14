@@ -315,7 +315,9 @@ write.csv(master_tbl, ouput_path, row.names = FALSE)
 
 
 rm(body_html, final_tbl, scrapy_tbl, records_tbl, table_html)
-
+rm(master_tbl, names_tbl, page_date, table_span)
+rm(code_id, count, count_page, data_date, data_month, entity_name, 
+	 execution_date, execution_month, file_name, img_last)
 
 
 

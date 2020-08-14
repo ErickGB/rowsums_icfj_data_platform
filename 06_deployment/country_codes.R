@@ -29,6 +29,13 @@ country_tbl <- country_tbl %>%
 country_tbl %>% 
 	glimpse()
 
+max(nchar(country_tbl$sub_region_code), na.rm = TRUE)
+
+country_tbl %>%
+	summarise(across(name:region, nchar))
+
+
+
 loaded_country_tbl <-  readr::read_csv(paste0(PATH_IN, "countries_loaded.csv"))
 loaded_country_tbl <- loaded_country_tbl %>% 
 	janitor::clean_names()

@@ -9,6 +9,8 @@ library(magick)    # Simplify high-quality image processing in R
 library(purrr)     # Functional programming
 library(furrr)     # Parallel Processing using purrr (iteration)
 # ***************************************************************************
+
+	
 url_css <- "http://www.css.gob.pa/p/grid_defensoria/"
 url_last_update <- "http://web.css.gob.pa/transparencia/nodo-de-transparencia/" #"http://www.css.gob.pa/transparencia.html"
 PATH_OUT <- "./00_data/out/salaries/pending_process/"
@@ -26,9 +28,10 @@ error_tbl <- tibble(
 # ***********************************************
 # functions ----
 source("00_scripts/etl_functions.R")
-#get_css_employees(7)
+#get_css_employees(1)
 get_css_employees <- function(page) {
 	tryCatch({
+		page <- 2
 		id <- 1
 		# Data page  1...10 records
 		page_tbl <- tibble(
@@ -44,21 +47,31 @@ get_css_employees <- function(page) {
 			total = character()
 		)
 		
-		print(paste0("start processing page:", as.character(page)))
 		body_html <- splash_local %>% 
 			splash_go(url_css) %>% 
 			splash_wait(15)
+		print(paste0("start procesed page:", as.character(url_css)))
+		
 		
 		body_html <- body_html %>% 
-			splash_focus("#rec_f0_bot") %>% 
+			splash_focus("rec_f0_bot") %>% 
 			splash_send_text(page) %>% 
-			splash_send_keys("<Return>") %>% 
+			splash_focus("brec_bot") %>%
+			splash_send_keys("<Return>") %>%
+			splash_wait(15) 
+		print(paste0("first enter, and waiting 20 seconds for server response"))
+		Sys.sleep(20)
+		
+		body_html <- body_html %>% 
 			splash_focus("#brec_bot") %>% 
 			splash_send_keys("<Return>") %>% 
-			splash_wait(15) %>% 
+			splash_wait(20) %>% 
 			#splash_click(x = 62, y = 760) %>% 
 			splash_html() # splash_png() 
-		#body_html
+		print(paste0("second enter"))
+		
+		body_html %>%
+			splash_html()
 		
 		#body_html %>% 
 		#	rvest::html_nodes(css = 'input[id="rec_f0_bot"]') %>% 
@@ -122,6 +135,7 @@ get_css_employees <- function(page) {
 			page_tbl <- rbind(page_tbl, record_tbl)
 			
 		}
+		print("tres")
 	},
 	error=function(error_message) {
 		#htlm_error <- body_html %>% 
@@ -156,9 +170,9 @@ get_css_employees <- function(page) {
 
 # Table with results 1 to 3456
 final_tbl <- tibble(
-	id = 1:3460,
-	entity = rep("CSS", 1, 3460),
-	site = rep(url_css, 1, 3460)
+	id = 1:3456,
+	entity = rep("CSS", 1, 3456),
+	site = rep(url_css, 1, 3456)
 )
 
 
