@@ -87,6 +87,19 @@ summary_tbl %>%
 write.csv(summary_tbl, paste0(PATH_OUT, "/covid_daily_cluster_key.csv"), row.names = FALSE)
 
 
+# benford law
+master_tbl %>% 
+	filter(cantidad > 0) %>% 
+	filter(date == "2020-08-16") %>% 
+	mutate(first_digit = substr(as.character(cantidad), 1, 1)) %>%
+	count(first_digit) %>%
+	mutate(percent = (n / sum(n))*100  ) %>%
+	arrange(first_digit)
+
+
+
+
+
 # start mlFlow 
 with(mlflow_start_run(), { 
 	# mlFlow parameters

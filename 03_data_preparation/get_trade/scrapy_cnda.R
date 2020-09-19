@@ -15,12 +15,13 @@ library(stringr)
 library(DataExplorer)
 
 # ***********************************************
-date_start <- "2020-07-01"
-date_end <- "2020-07-31"
+date_start <- "2020-08-01"
+date_end <- "2020-08-31"
 year <- substr(date_end, 1, 4)
-record_type <- "I" # I = Imports, E = exports 
+record_type <- "E" # I = Imports, E = exports 
 file_type <- ifelse(record_type == "I", "imports", "exports")
 PATH_OUT <- paste0("./00_data/out/", file_type, "/") 
+PATH_OUT
 page_record <- ifelse(record_type == "I", 5000, 1000)
 
 date_time <- as.character(Sys.Date()) # process execution day

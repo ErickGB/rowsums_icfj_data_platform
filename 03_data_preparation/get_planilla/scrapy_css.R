@@ -31,8 +31,8 @@ source("00_scripts/etl_functions.R")
 #get_css_employees(1)
 get_css_employees <- function(page) {
 	tryCatch({
-		page <- 2
-		id <- 1
+		#page <- 2
+		#id <- 1
 		# Data page  1...10 records
 		page_tbl <- tibble(
 			person_id = character(),
@@ -49,36 +49,26 @@ get_css_employees <- function(page) {
 		
 		body_html <- splash_local %>% 
 			splash_go(url_css) %>% 
-			splash_wait(15)
-		print(paste0("start procesed page:", as.character(url_css)))
-		
-		
-		body_html <- body_html %>% 
-			splash_focus("rec_f0_bot") %>% 
+			splash_wait(5) %>% 
+			splash_focus("#rec_f0_bot") %>%  
 			splash_send_text(page) %>% 
-			splash_focus("brec_bot") %>%
+			splash_focus("#brec_bot") %>%
+			#splash_click(90, 668) %>% 
 			splash_send_keys("<Return>") %>%
-			splash_wait(15) 
-		print(paste0("first enter, and waiting 20 seconds for server response"))
-		Sys.sleep(20)
-		
-		body_html <- body_html %>% 
-			splash_focus("#brec_bot") %>% 
-			splash_send_keys("<Return>") %>% 
-			splash_wait(20) %>% 
+			splash_wait(15) %>% 
+			#splash_focus("#brec_bot") %>% 
+			#splash_send_keys("<Return>") %>% 
+			#splash_wait(20) %>% 
 			#splash_click(x = 62, y = 760) %>% 
 			splash_html() # splash_png() 
-		print(paste0("second enter"))
-		
-		body_html %>%
-			splash_html()
+		print(paste0(page,  " page"))
 		
 		#body_html %>% 
 		#	rvest::html_nodes(css = 'input[id="rec_f0_bot"]') %>% 
 		#	rvest::html_attr("value") 
 		#print(paste0("recovery items:", as.character(page)))
 		for(i in 1:10) {
-			id <- i
+			#id <- 1 
 			pperson_id <- body_html %>% 
 				rvest::html_nodes(css = str_replace('span[id="id_sc_field_cedula_1"]', "1", as.character(i))) %>% 
 				rvest::html_text() # "10-21-450"
@@ -135,7 +125,7 @@ get_css_employees <- function(page) {
 			page_tbl <- rbind(page_tbl, record_tbl)
 			
 		}
-		print("tres")
+		#print("tres")
 	},
 	error=function(error_message) {
 		#htlm_error <- body_html %>% 

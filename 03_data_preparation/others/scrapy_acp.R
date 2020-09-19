@@ -11,9 +11,8 @@ library(furrr)     # Parallel Processing using purrr (iteration)
 # ***************************************************************************
 # ACP
 
-
 url <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=26"
-url_dinamic <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_grid&amp;gid=53_on_1&amp;o_b=id&amp;o_d=ASC&amp;p=x_url&amp;rpp=125&id=26"
+url_dinamic <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_grid&gid=2_1&o_b=id&o_d=ASC&p=1&rpp=125&id=26"
 entity_name <- "ACP"
 code_id <- "908"
 output_file_name <- "acp_gov_salaries_"
@@ -27,13 +26,14 @@ start_time <- system.time()
 source("00_scripts/etl_functions.R")
 
 get_mc_employee <- function(tableid, url) {
+	
 	#tableid <- 2
 	#url <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_grid&amp;gid=26_ed_1&amp;o_b=id&amp;o_d=ASC&amp;p=7&amp;rpp=125&id=74"
 	discount <- ifelse(tableid == 4, 3, 2)
 	
 	body_html <- splash_local %>% 
 		splash_go(url) %>% 
-		splash_wait(10) %>% 
+		splash_wait(5) %>% 
 		splash_html()
 	
 	# we return all the tables on the page
@@ -44,81 +44,72 @@ get_mc_employee <- function(tableid, url) {
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr')
 	rows <- (length(rows) - discount)
+	print(paste0("with:", rows, " rows"))
 	
-	pperson_id <-  table_html[tableid] %>% 
+	pcompletename <-  table_html[tableid] %>% 
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr') %>% 
 		.[2:rows] %>% 
-		rvest::html_nodes(xpath = 'td[2]') %>% 
-		rvest::html_text()
-	
-	pcomplete_name <-  table_html[tableid] %>% 
-		rvest::html_nodes('tbody') %>% 
-		rvest::html_nodes('tr') %>% 
-		.[2:rows] %>% 
-		rvest::html_nodes(xpath = 'td[3]') %>% 
+		rvest::html_nodes(xpath = 'td[1]') %>% 
 		rvest::html_text()
 	
 	pjob_position <-  table_html[tableid] %>% 
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr') %>% 
 		.[2:rows] %>% 
+		rvest::html_nodes(xpath = 'td[2]') %>% 
+		rvest::html_text()
+	
+	pstatus <-  table_html[tableid] %>% 
+		rvest::html_nodes('tbody') %>% 
+		rvest::html_nodes('tr') %>% 
+		.[2:rows] %>% 
+		rvest::html_nodes(xpath = 'td[3]') %>% 
+		rvest::html_text()
+	
+	prange <-  table_html[tableid] %>% 
+		rvest::html_nodes('tbody') %>% 
+		rvest::html_nodes('tr') %>% 
+		.[2:rows] %>% 
 		rvest::html_nodes(xpath = 'td[4]') %>% 
 		rvest::html_text()
 	
-	pdepartament <-  table_html[tableid] %>% 
+	pasigned <-  table_html[tableid] %>% 
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr') %>% 
 		.[2:rows] %>% 
 		rvest::html_nodes(xpath = 'td[5]') %>% 
 		rvest::html_text()
 	
-	pstart_date <-  table_html[tableid] %>% 
+	psalary <-  table_html[tableid] %>% 
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr') %>% 
 		.[2:rows] %>% 
 		rvest::html_nodes(xpath = 'td[6]') %>% 
 		rvest::html_text()
 	
-	
-	pstatus <-  table_html[tableid] %>% 
+	pexpenses <-  table_html[tableid] %>% 
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr') %>% 
 		.[2:rows] %>% 
 		rvest::html_nodes(xpath = 'td[7]') %>% 
 		rvest::html_text()
 	
-	psalary <-  table_html[tableid] %>% 
+	ptotal <-  table_html[tableid] %>% 
 		rvest::html_nodes('tbody') %>% 
 		rvest::html_nodes('tr') %>% 
 		.[2:rows] %>% 
 		rvest::html_nodes(xpath = 'td[8]') %>% 
 		rvest::html_text()
 	
-	pexpenses <-  table_html[tableid] %>% 
-		rvest::html_nodes('tbody') %>% 
-		rvest::html_nodes('tr') %>% 
-		.[2:rows] %>% 
-		rvest::html_nodes(xpath = 'td[9]') %>% 
-		rvest::html_text()
-	
-	ptotal <-  table_html[tableid] %>% 
-		rvest::html_nodes('tbody') %>% 
-		rvest::html_nodes('tr') %>% 
-		.[2:rows] %>% 
-		rvest::html_nodes(xpath = 'td[10]') %>% 
-		rvest::html_text()
-	
 	row_tbl <- tibble(
-		person_id = pperson_id,
-		complete_name = pcomplete_name,
+		complete_name = pcompletename,
 		position = pjob_position,
-		department = pdepartament,
 		status = pstatus,
-		start_date = pstart_date,
+		range = prange,
+		assigned = pasigned,
 		salary = psalary,
 		expenses = pexpenses,
-		over_costs = 0,
 		total_income = ptotal
 	)
 	return(row_tbl)
@@ -172,7 +163,6 @@ execution_date  # when I run the data extraction
 # Start, active splash ----
 splash("localhost") %>% splash_active()
 
-
 # 1. capture the last update
 file_name <- paste0("./00_data/images/",update_year, "/",  update_month, "/miamb_last_update_", paste0(update_month, update_year)  ,"_process_", execution_date,".png")
 file_name
@@ -208,11 +198,17 @@ records_tbl$url[1] <- url
 records_tbl$table_id[1] <- 4
 records_tbl
 
+
 time <- Sys.time()
 scrapy_tbl <- records_tbl %>% 
 	mutate(features = furrr::future_map2(table_id, url, get_mc_employee)) %>%  # future_map2 => with many parameters
 	unnest()
 Sys.time() - time # Time difference of  54.01361 secs
+
+
+nrow(scrapy_tbl)
+scrapy_tbl %>% 
+	glimpse()
 
 scrapy_tbl %>% 
 	head(10)
@@ -225,14 +221,14 @@ View(scrapy_tbl)
 
 final_tbl <- scrapy_tbl %>% 
 	mutate(
-		person_id = str_replace(str_trim(person_id), '"', ""),
-		complete_name = str_replace(str_trim(complete_name), '"', ""),
+		#person_id = str_replace(str_trim(person_id), '"', ""),
+		#complete_name = str_replace(str_trim(complete_name), '"', ""),
 		#first_name = str_split(complete_name, " "),
-		start_date = str_replace(str_trim(start_date), '"', ""),
-		start_date = str_replace(start_date, "-", "/"),
-		start_date = str_replace(start_date, "-", "/"),
-		start_date = str_replace(start_date, " ", ""),
-		start_date = str_replace(start_date, "//", "/"),
+		#start_date = str_replace(str_trim(start_date), '"', ""),
+		#start_date = str_replace(start_date, "-", "/"),
+		#start_date = str_replace(start_date, "-", "/"),
+		#start_date = str_replace(start_date, " ", ""),
+		#start_date = str_replace(start_date, "//", "/"),
 		position = str_replace(str_trim(position), '"', ""),
 		#direction = str_replace(str_trim(direction), '"', ""),
 		status = str_replace(str_trim(status), '"', ""),
@@ -240,20 +236,33 @@ final_tbl <- scrapy_tbl %>%
 		salary = str_replace(salary, ',', ""),
 		expenses = str_replace(str_trim(expenses), '"', ""),
 		expenses = str_replace(expenses, ',', ""),
-		over_costs = str_replace(str_trim(over_costs), '"', ""),
-		over_costs = str_replace(over_costs, ',', ""),
+		#over_costs = str_replace(str_trim(over_costs), '"', ""),
+		#over_costs = str_replace(over_costs, ',', ""),
 		total_income = str_replace(str_trim(total_income), '"', ""), 
 		total_income = str_replace(total_income, ',', ""),
 	) %>% 
 	mutate(
 		salary = as.numeric(salary),
 		expenses = as.numeric(expenses),
-		over_costs = as.numeric(over_costs),
+		#over_costs = as.numeric(over_costs),
 		total_income = as.numeric(total_income)
-	)
+	) %>% 
+	mutate(
+		first_digit =  substr(as.character(total_income), 1, 1)) 
+
+
+final_tbl %>%
+	count(first_digit) %>%
+	mutate(percent = (n / sum(n))*100  ) %>%
+	arrange(first_digit)
+
 
 final_tbl %>% 
 	summarize(total = sum(total_income), count = n())
+
+final_tbl
+
+
 
 #final_tbl <- final_tbl %>% 
 #	select(person_id, complete_name, position, department, status, start_date, salary, expenses, over_costs, total_income)
@@ -309,7 +318,7 @@ ouput_path <- paste0(PATH_OUT, update_year, "/",  update_month, "/miamb_last_upd
 ouput_path
 
 write.csv(master_tbl, ouput_path, row.names = FALSE) 
-rm(body_html, final_tbl, scrapy_tbl, records_tbl, table_html)
+rm(body_html, final_tbl, records_tbl, table_html)
 
 # total time
 system.time() - start_time 

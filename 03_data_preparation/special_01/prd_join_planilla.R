@@ -1,12 +1,18 @@
 # ***********
 # planilla ----
-planilla_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/2020/march/1_central_gov_salaries_march.csv")
+#planilla_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/2020/march/1_central_gov_salaries_march.csv")
 css_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/2020/march/2_central_css_gov_salaries_march.csv")
-contrata_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/2020/march/3_dir_contrataciones_publicas_gov_salaries_march_2020_processed_2020-05-17.csv")
-consumidor_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/2020/march/5_aut_consumidor_gov_salaries_march_2020_processed_2020-05-17.csv")
+#contrata_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/2020/march/3_dir_contrataciones_publicas_gov_salaries_march_2020_processed_2020-05-17.csv")
+#consumidor_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/2020/march/5_aut_consumidor_gov_salaries_march_2020_processed_2020-05-17.csv")
+
+
+planilla_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/2020/july/central_gov_salaries_july.csv")
+consumidor_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/2020/july/aut_consumidor_gov_salaries_july_2020_processed_2020-07-29.csv")
+contrata_tbl <- readr::read_csv("./00_data/out/salaries/pending_process/2020/july/4_aut_serv_publicos_gov_salaries_july_2020_processed_2020-07-29.csv")
 
 planilla_marzo_2019 <- readr::read_csv("./00_data/out/salaries/prd/planilla_marzo.csv")
-
+planilla_marzo_2019 %>% 
+	glimpse()
 
 css_tbl <- css_tbl %>% 
 	count(code, complete_name, last_name, person_id, position, 
@@ -153,9 +159,12 @@ prd_people <- prd_people %>%
 	mutate(is_new = ifelse(start_date < as.Date("01-07-2019", "%d-%m-%Y") & is.na(is_new) # si la fecha es menor, pero no estaba en planilla en juni 19
 												 , "yes", is_new))
 
+prd_all %>% 
+	DataExplorer::plot_missing()
 
-write.csv(prd_all, "./00_data/out/prd_all.csv", row.names = FALSE)
-write.csv(prd_people, "./00_data/out/prd_people.csv", row.names = FALSE)
+
+write.csv(prd_all, "./00_data/out/prd_all_v2.csv", row.names = FALSE, na = "")
+write.csv(prd_people, "./00_data/out/prd_people_v2.csv", row.names = FALSE, na = "")
 
 
 # ********************************************************************

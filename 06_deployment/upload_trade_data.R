@@ -52,6 +52,7 @@ set_process_data <- function(file_name) {
 						impuestos_de_importacion = impuestos_de_exportacion
 					)
 			}
+
 			
 			#temp <- as.character(data_tbl[c(61272), c("valor_del_flete", "text_original")][2])
 			data_tbl <- data_tbl %>% 
@@ -161,7 +162,7 @@ last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
 data_tbl$process_date <- as.Date(last_update, tryFormats = c('%Y-%m-%d')) #Sys.Date()
 View(data_tbl)
-data_tbl <- data_tbl[15,]
+data_tbl <- data_tbl[52,]
 
 httr::set_config(httr::config(http_version = 0))
 # autentication - only one time
@@ -221,14 +222,17 @@ select GENERATE_UUID(), 'SK', 'SKV', 'ISO 3166-2:SK', '703', 'Slovakia', 'Europe
 INSERT INTO trade.dim_country
 select GENERATE_UUID(), 'SB', 'SLB', 'ISO-3166', '677', 'Solomon Islands', 'Oceania', 'Australia and New Zealand', '009', '053', -8.309090, 159.382619, 1, NULL 
 
+select GENERATE_UUID(), 'LY', 'LYB', 'ISO-3166', '218', 'Libia', 'Africa', 'Northern Africa', '002', '015', 2.379440, 37.5088900, 1, NULL 
 
+
+	
 
 */
 
 	select count(*) from data_test.staging_imports im 
 inner join trade.dim_category ca on ca.sub_category_code = substr(tariff_fraction, 1, 2)
 inner join trade.dim_country co on co.alpha_2 = country_origin_code 
-where input_date > cast('2020-07-01' as date) 	
+where input_date > cast('2020-09-01' as date) 	
 	
 insert into trade.fact_import
 select GENERATE_UUID(), ca.category_id, co.country_id, 
@@ -238,11 +242,11 @@ description, key, original_text, quantity_text,
 tariff_fraction, import_taxes, oil_protection_taxes, isc_taxes, itbms_taxes, 
 gross_weight_text, net_weight_text, port, total_to_pay, cif, freight_value, insurance, fob, quantity, gross_weight, net_weight,
 day, month, cast(extract(year from im.date) as int64), country_data, year_month_date, 
-cast(concat(substr(cast(im.date as string), 1, 8),'01') as date), 6
+cast(concat(substr(cast(im.date as string), 1, 8),'01') as date), 7 # IMPORTANT!!
 from data_test.staging_imports im 
 inner join trade.dim_category ca on ca.sub_category_code = substr(tariff_fraction, 1, 2)
 inner join trade.dim_country co on co.alpha_2 = country_origin_code 
-where input_date > cast('2020-07-01' as date) # yyyy-mm-dd
+where input_date > cast('2020-09-01' as date) # yyyy-mm-dd
 # 126554 - 126554 - 126554 - 122906 (3 months)
 
 insert into trade.fact_agg_product
@@ -254,7 +258,7 @@ month, year, year_month_date, year_date
 from trade.fact_import fi
 inner join trade.dim_category ca on  fi.category_id = ca.category_id
 inner join trade.dim_country co on  fi.country_id = co.country_id
-where -- record_id = 6
+where -- record_id = 7 # IMPORTANT!!
 group by co. alpha_2 , co.name, region, sub_region, latitude, longitude, company, RUC, category_code, 
 sub_category_code, category, sub_category,month, year, year_month_date, year_date 
 30.821
