@@ -1,0 +1,559 @@
+---
+title: "EDA: Gender Pay Gap in Panama for public sector"
+author: "Erick Gordón"
+date: "20/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#isis rodriguez 
+#isisz@contraloria.gob.pa
+```
+
+```{r, include=FALSE}
+
+library(tidyverse)   # data manipulation
+library(tidyquant)
+
+library(stringr)      # string manipulation
+library(formattable)  # format data table
+library(janitor)      # basic manipulation 
+library(DataExplorer) # general data explorer
+library(kableExtra)   # tables in markdown document (html)
+
+library(ggthemes)     # ggplot themes
+library(bbplot)       # bbc plot stylye
+library(plotly) 
+
+
+tableau_colours <- c("#555555",'#D62728','#1F77B4', '#FF7F0E', '#2CA02C', '#9467BD', '#8C564B', '#CFECF9', '#7F7F7F', '#BCBD22', '#17BECF')
+gray_colors <- c('#fb6a4a', '#D62728', '#74a9cf', '#045a8d',  "#252525", '#d9d9d9', "#969696")
+
+#
+source("./00_scripts/base_functions.R")
+PATH_IN <- "./00_data/in/salaries/parity/"
+
+data_tbl <- read.csv(paste0(PATH_IN, "/parity_ajusted_v3.csv"), 
+														dec = ".") %>% 
+		filter(total_income > 0) %>% 
+		mutate(gender = as.character(gender)) %>% 
+		mutate(
+			gender = ifelse(is.na(gender), "NA", gender),
+			start_date = as.Date(start_date, tryFormat = c("%Y-%m-%d") )
+					 ) %>% 
+		mutate(
+			is_new = ifelse(start_date >= as.Date("2019-07-01", tryFormat = c("%Y-%m-%d")), 1, 0)) 
+
+entity_tbl <- data_tbl %>% 
+	count(code) %>% 
+	rename(total_entity = n)
+
+data_tbl <- data_tbl %>% 
+	left_join(entity_tbl, by = 'code')
+rm(entity_tbl)
+
+
+prob_tbl <- data_tbl %>% 
+	summary_col_by_group(gender, col = probability) %>% 
+	select(gender, Mean, Median) %>% 
+	rename(prob_mean = Mean, prob_median = Median)
+
+
+```
+
+
+
+
+## Datos Exploratorio 
+
+Esta investigación busca establecer un punto de partida para medir el nivel de **disparidad en el ingreso por género en el sector público**. Esta investigación ha sido patrocinada por el International center for Journalist --ICFJ <https://www.icfj.com>.
+
+Tamaño de la muestra:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+nrow(data_tbl) # 156,431
+74504 + 75464
+
+```
+
+
+### Dispersión de la muestra
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# tabla medidas de tendencia central
+data_tbl %>% 
+	summary_col_by_group(gender, col = total_income) %>% 
+	mutate(Percent = round(Count/nrow(data_tbl) * 100, 0)) %>% 
+	select(gender, Count, Percent, Min, Max) %>% 
+	left_join(prob_tbl, by = 'gender') %>% 
+	kableExtra::kbl(caption = "Resumen por Sexo") %>%
+  kableExtra::kable_classic(full_width = F, html_font = "Cambria") %>% 
+	#add_header_above(c(" " = 1, "Cantidad" = 5, "Salario" = 6)) %>% 
+	kableExtra::footnote(general = "Elaboración propia, Erick Gordón")
+
+# boxplot
+#data_tbl %>% 
+#	filter(gender != "NA") %>% 
+#	ggplot(aes(x = sex, y = total_income)) + 
+#	geom_boxplot() +
+#	coord_flip()
+
+
+# only with gender
+data_filtered_tbl <- data_tbl %>%
+	filter(gender != "NA")
+
+# Agrupado por entidad y position
+data_position_tbl <- data_filtered_tbl %>% 
+	summary_col_by_group(code, entity, position, gender, col = total_income)
+
+
+```
+
+Por entidad por cargo
+
+Agrupa a los funcionarios por entidad, cargo y sex para compararlos por posiciones equivalentes, luego calcula la media de esta agrupación.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE }
+
+# tabla medidas de tendencia central si usamos solo el salario individuaal sin agrupar.
+data_filtered_tbl %>% 
+	summary_col_by_group(gender, col = total_income) %>% 
+	mutate(Percent = round(Count/nrow(data_tbl) * 100, 0)) %>% 
+	select(gender, Min, Max, Mean, Median, SD, SE, LI, LS) %>% 
+	kableExtra::kbl(caption = "Medidas agrupando SOLO por sexo") %>%
+  kableExtra::kable_classic(full_width = F, html_font = "Cambria") %>% 
+	#add_header_above(c(" " = 1, "Cantidad" = 5, "Salario" = 6)) %>% 
+	kableExtra::footnote(general = "Elaboración propia, Erick Gordón")
+
+```
+
+Agrupando por posición, entidad y sexo. Se comparan las posiciones equivalentes para medir si reciben el mismo pago
+```{r message=FALSE, warning=FALSE}
+
+data_position_tbl <- data_filtered_tbl %>% 
+	summary_col_by_group(code, entity, position, gender, col = total_income)
+
+# tabla medidas de tendencia central agrupando por posicion, entidad y sexo
+data_position_tbl %>% 
+	summary_col_by_group(gender, col = Mean) %>% 
+	mutate(Percent = round(Count/nrow(data_tbl) * 100, 0)) %>% 
+	select(gender, Min, Max, Mean, Median, SD, SE, LI, LS) %>% 
+	kableExtra::kbl(caption = "Medidas agrupado por entidad, cargo y sexo") %>%
+  kableExtra::kable_classic(full_width = F, html_font = "Cambria") %>% 
+	#add_header_above(c(" " = 1, "Cantidad" = 5, "Salario" = 6)) %>% 
+	kableExtra::footnote(general = "Elaboración propia, Erick Gordón")
+
+```
+
+
+```{r}
+position <- data_tbl %>% 
+	count(position) 
+nrow(position)
+```
+
+
+
+
+### Deciles 
+Si analizamos por deciles podemos ver la distribución **no** es uniforme. En los deciles más altos los hombres poseen salarios mayores.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE }
+
+decil_tbl <- data_filtered_tbl %>% 
+	summary_col_by_group(gender, decil_name, col = total_income) 
+
+count_tbl <- decil_tbl %>% 
+	select(gender, decil_name, Count) %>% 
+	filter(is.na(gender) == FALSE) %>% 
+	pivot_wider(
+		names_from = "gender",
+		values_from = "Count"
+	) %>% 
+	janitor::clean_names() %>% 
+	rename(cantd_homb = hombre, cantd_mujer = mujer)
+
+# deciles
+decil_tbl <- data_filtered_tbl %>% 
+	summary_col_by_group(code, entity, decil_name, gender, col = total_income) %>% 
+	summary_col_by_group(decil_name, gender, col = Mean) 
+
+
+decil_tbl %>% 
+	select(gender, decil_name, Median) %>% 
+	filter(is.na(gender) == FALSE) %>% 
+	pivot_wider(
+		names_from = "gender",
+		values_from = "Median"
+	) %>% 
+	mutate(
+		DIFERENCE = MUJER - HOMBRE,
+		PERCENTAGE = (DIFERENCE/MUJER) * 100
+	) %>% 
+	left_join(count_tbl, by = 'decil_name') %>% 
+	mutate(
+		cantidad_diff = cantd_mujer - cantd_homb,
+		percent_diff = ((cantd_mujer - cantd_homb)/(cantd_mujer + cantd_homb)) * 100
+		) %>% 
+	janitor::clean_names() %>% 
+		kableExtra::kbl(caption = "Mediana de salario por decil, en dólares") %>%
+  kableExtra::kable_classic(full_width = F, html_font = "Cambria") %>% 
+	#add_header_above(c(" " = 1, "Cantidad" = 5, "Salario" = 6)) %>% 
+	kableExtra::footnote(general = "Elaboració propia, Erick Gordón")
+	
+	
+```
+
+
+### Decil superior por entidad
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# deciles
+decil_tbl <- data_filtered_tbl %>% 
+	filter(total_income >= 2264) %>% 
+	summary_col_by_group(entity, decil_name, gender, col = total_income)
+
+count_tbl <- decil_tbl %>% 
+	select(gender, entity, Count) %>% 
+	pivot_wider(
+		names_from = "gender",
+		values_from = "Count"
+	) %>% 
+	janitor::clean_names() %>% 
+	rename(cantd_homb = hombre, cantd_mujer = mujer)
+
+# agrupado por posición se genera la mediana de las posiciones por entidad
+data_filtered_tbl %>% 
+	filter(total_income >= 2264) %>% 
+	summary_col_by_group(code, entity, position, gender, decil_name, col = total_income) %>% 
+	summary_col_by_group(entity, gender, col = Median) %>% 
+#decil_tbl %>% 
+select(gender, entity, Median) %>% 
+	pivot_wider(
+		names_from = "gender",
+		values_from = "Median"
+	) %>% 
+	mutate(
+		DIFERENCE = MUJER - HOMBRE,
+		PERCENTAGE = (DIFERENCE/MUJER) * 100
+	) %>% 
+	left_join(count_tbl, by = 'entity') %>% 
+	janitor::clean_names() %>% 
+		kableExtra::kbl(caption = "Mediana de salario por decil, en dólares") %>%
+  kableExtra::kable_classic(full_width = F, html_font = "Cambria") %>% 
+	#add_header_above(c(" " = 1, "Cantidad" = 5, "Salario" = 6)) %>% 
+	kableExtra::footnote(general = "Elaboración propia, Erick Gordón")
+```
+
+
+
+### En el nuevo gobierno 
+```{r, echo=FALSE, message=FALSE, warning=FALSE }
+# deciles
+decil_tbl <- data_filtered_tbl %>% 
+	filter(is_new == 1) %>% 
+	summary_col_by_group(gender, decil_name, col = total_income) %>% 
+	ungroup() 
+
+count_tbl <- decil_tbl %>% 
+	select(gender, decil_name, Count) %>% 
+	filter(is.na(gender) == FALSE) %>% 
+	pivot_wider(
+		names_from = "gender",
+		values_from = "Count"
+	) %>% 
+	janitor::clean_names() %>% 
+	rename(cantd_homb = hombre, cantd_mujer = mujer)
+
+decil_tbl %>% 
+	select(gender, decil_name, Median) %>% 
+	filter(is.na(gender) == FALSE) %>% 
+	pivot_wider(
+		names_from = "gender",
+		values_from = "Median"
+	) %>% 
+	mutate(
+		DIFERENCE = MUJER - HOMBRE,
+		PERCENTAGE = (DIFERENCE/MUJER) * 100
+	) %>% 
+	left_join(count_tbl, by = 'decil_name') %>% 
+	janitor::clean_names() %>% 
+		kableExtra::kbl(caption = "Mediana de salario por decil, en dólares") %>%
+  kableExtra::kable_classic(full_width = F, html_font = "Cambria") %>% 
+	#add_header_above(c(" " = 1, "Cantidad" = 5, "Salario" = 6)) %>% 
+	kableExtra::footnote(general = "Elaboració propia, Erick Gordón")
+	
+	
+```
+
+
+
+### Otros Gastos de la Administración
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Fiscalía General Electoral
+decil_tbl <- data_filtered_tbl %>% 
+	#filter(total_income >= 2264) %>% 
+	filter(entity == 'Otros Gastos de la Administración') %>% 
+	summary_col_by_group(gender, position, col = total_income) %>%
+	ungroup() 
+
+count_tbl <- decil_tbl %>% 
+	select(gender, position, Count) %>% 
+	pivot_wider(
+		names_from = "gender",
+		values_from = "Count"
+	) %>% 
+	mutate(MUJER = ifelse(is.na(MUJER), 0, MUJER)) %>% 
+	mutate(HOMBRE = ifelse(is.na(HOMBRE), 0, HOMBRE)) %>% 
+	janitor::clean_names() %>% 
+	rename(cantd_homb = hombre, cantd_mujer = mujer)
+
+years_tbl <- data_filtered_tbl %>% 
+	filter(entity == 'Otros Gastos de la Administración') %>% 
+	#filter(total_income >= 2264) %>% 
+	group_by(gender, position) %>% 
+	summarise(years_in_work = mean(years_in_work)) %>% 
+	pivot_wider(
+		names_from = "gender",
+		values_from = "years_in_work"
+	) %>% 
+	mutate(MUJER = ifelse(is.na(MUJER), 0, MUJER)) %>% 
+	mutate(HOMBRE = ifelse(is.na(HOMBRE), 0, HOMBRE)) %>% 
+	janitor::clean_names() %>% 
+	rename(years_homb = hombre, years_mujer = mujer)
+
+data_filtered_tbl %>% 
+	filter(entity == 'Otros Gastos de la Administración') %>% 
+	#filter(total_income >= 2264) %>% 
+	summary_col_by_group(gender, position, col = total_income) %>%
+	ungroup() %>% 
+	select(gender, position, Mean) %>% # Median
+	pivot_wider(
+		names_from = gender,
+		values_from = Mean
+	) %>%  
+	left_join(count_tbl, by = 'position') %>% 
+	#left_join(years_tbl, by = 'position') %>% 
+	mutate(MUJER = ifelse(is.na(MUJER), 0, MUJER)) %>% 
+	mutate(HOMBRE = ifelse(is.na(HOMBRE), 0, HOMBRE)) %>% 
+	mutate(DIFERENCIA = MUJER - HOMBRE) %>% 
+	janitor::clean_names() %>% 
+	arrange(desc(hombre)) %>% 
+	rename(Cargo = position, Hombre = cantd_homb, Mujer = cantd_mujer) %>% 
+	mutate(hombre = currency(hombre, symbol="B./", digits = 0L), mujer = currency(mujer, digits = 0L, symbol="B./"), Dif. = Mujer - Hombre) %>% 
+	select(Cargo, hombre, mujer, diferencia, Hombre, Mujer, Dif.) %>% 
+	kableExtra::kbl(caption = "Mediana de salario por sexo por ocupación, en dólares") %>%
+  kableExtra::kable_classic(full_width = F, html_font = "Cambria") %>% 
+	add_header_above(c(" " = 1, "Salario" = 3, "Cantidad" = 3)) %>%
+	kableExtra::footnote(
+		general = "Elaboración propia, a partir de datos de la Contraloría General de la Rep., Erick Gordón", 
+		general_title = "Fuente: ", footnote_as_chunk = T)
+
+```
+
+
+### Resumen diferencias
+Los valores positivos indican que la mujer tiene una participación más alta y negativos que son más bajos. En este caso la cantidad de funcionarios y el salario medio (mediana).
+
+```{r, include=FALSE, echo=FALSE }
+# tablas de cantidad y salario 
+
+# tabla de cantidad de funcionarios
+parity_entity_count_tbl <- data_tbl %>% 
+	summary_col_by_group(code, entity, gender, col = total_income) %>% 
+	arrange(entity, gender) %>% 
+	select(code, gender, entity, Count) %>% 
+	pivot_wider(names_from = gender, values_from = Count) %>% 
+	janitor::clean_names() %>% 
+	mutate(
+		diference = mujer - hombre,
+		percent = (mujer - hombre)/(hombre+mujer)
+	) %>% 
+	rename(
+		no_identificado = na
+	)
+
+
+# tabla de mediana de salarios 
+parity_entity_salary_tbl <- data_tbl %>% 
+	#filter(decil_name == "9.1  mayor a B./2,264") %>% 
+	summary_col_by_group(code, entity, gender, position, col = total_income) %>% 
+	summary_col_by_group(code, entity, gender, col = Median) %>% 
+	arrange(code, entity, gender) %>% 
+	select(code, entity, gender, Median) %>% 
+	pivot_wider(names_from = gender, values_from = Median) %>% 
+	janitor::clean_names() %>% 
+	mutate(
+		salary_diference = mujer - hombre,
+		salary_percent = (mujer - hombre)/(hombre+mujer), 
+		equivalent = mujer / hombre
+	) %>% 
+	rename(
+		salary_h = hombre,
+		salary_m = mujer, 
+		salary_no_identificado = na
+	)
+
+# join 
+join_entity_tbl <- parity_entity_count_tbl %>% 
+	select(code, entity, diference) %>% 
+	left_join(parity_entity_salary_tbl %>% select(code, salary_diference), by = 'code') %>% 
+	rename(cantidad = diference, salarios = salary_diference)
+
+
+```
+
+
+```{r echo=FALSE, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+background_colors_1 <- c(
+	"#ffeda0", "#fed976", "#feb24c", 
+	"#fd8d3c", "#fc4e2a", "#fc4e2a", 
+	"#fcbba1", "#fc9272", "#fb6a4a", 
+	#San Sal   Panama,   San Pedro
+	"#cb181d", "#67000d", "#252525")
+
+join_entity_tbl %>% 
+	pivot_longer(cantidad:salarios, names_to = "type", values_to = "value") %>% 
+	mutate(flag = ifelse(value < 0, "- mujeres", "+ mujeres") ) %>% 
+	ggplot(aes(x = value, y = entity, fill=flag)) +
+	geom_bar(stat = "identity") + 
+	facet_grid(. ~ type,  scale = "free") + 
+	scale_colour_manual(values = background_colors_1[1:nrow(join_entity_tbl)]) +
+	#bbc_style() +
+	rs_style() +
+	labs(
+		x = "", y = "% de variación", 
+		title="Desigualdad en la cantidad de funcionarios e ingreso según el sexo",
+		#subtitle = "Con un 98% en la disminución del tráfico, las ciudades Bridgetown(Barbados) y \nSan Pedro Sula (Honduras) lideran el ranking por el Caribe y Centroamérica", 
+		caption = "Elaboración propia a partir de datos de la Contraloría General de la Rep.\nCreado Por: Erick Gordón. www.rowsums.com")
+
+
+
+join_entity_tbl %>% 
+		kbl(caption = "Diferencias por entidad por cargo y sexo") %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>% 
+	#add_header_above(c(" " = 1, "Cantidad" = 5, "Salario" = 6)) %>% 
+	footnote(general = "Elaboración propia a partir de datos de la Contraloría General de la Rep.")
+
+```
+
+
+
+### Permanencia 
+La permanencia en el trabajo influye en los niveles de ingreso por sexo.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+status_tbl <- data_filtered_tbl %>% 
+	filter(is.na(status) == FALSE) %>% 
+	mutate(
+		permanent = ifelse(stringr::str_trim(
+			as.character(status), side = "both") == "PERMANENTE", "Permanente", "No Permanente")
+		) 
+
+years_tbl <- status_tbl %>% 
+	summary_col_by_group(gender, permanent, col = years_in_work) %>%
+	ungroup() %>% 
+	select(gender, permanent, Median) %>% 
+	pivot_wider(
+		names_from = gender,
+		values_from = Median
+	) %>% 	
+	mutate(MUJER = ifelse(is.na(MUJER), 0, MUJER)) %>% 
+	mutate(HOMBRE = ifelse(is.na(HOMBRE), 0, HOMBRE)) %>% 
+	janitor::clean_names() %>% 
+	rename(years_homb = hombre, years_mujer = mujer)
+
+
+status_tbl %>% 
+	summary_col_by_group(gender, permanent, col = total_income) %>%
+	ungroup() %>% 
+	select(gender, permanent, Median) %>% 
+	pivot_wider(
+		names_from = gender,
+		values_from = Median
+	) %>%  
+	janitor::clean_names() %>% 
+	arrange(desc(hombre)) %>% 
+	#left_join(count_tbl, by = 'position') %>% 
+	left_join(years_tbl, by = 'permanent') %>% 
+	kableExtra::kbl(caption = "Mediana de salario por ocupación, en dólares") %>%
+  kableExtra::kable_classic(full_width = F, html_font = "Cambria") %>% 
+	kableExtra::footnote(general = "Elaboració propia, Erick Gordón")
+
+```
+
+En el nuevo Gobierno
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+status_tbl <- data_filtered_tbl %>% 
+	filter(is_new == 1) %>% 
+	filter(is.na(status) == FALSE) %>% 
+	mutate(
+		permanent = ifelse(stringr::str_trim(
+			as.character(status), side = "both") == "PERMANENTE", "Permanente", "No Permanente")
+		) 
+
+years_tbl <- status_tbl %>% 
+	summary_col_by_group(gender, permanent, col = years_in_work) %>%
+	ungroup() %>% 
+	select(gender, permanent, Median) %>% 
+	pivot_wider(
+		names_from = gender,
+		values_from = Median
+	) %>% 	
+	mutate(MUJER = ifelse(is.na(MUJER), 0, MUJER)) %>% 
+	mutate(HOMBRE = ifelse(is.na(HOMBRE), 0, HOMBRE)) %>% 
+	janitor::clean_names() %>% 
+	rename(years_homb = hombre, years_mujer = mujer)
+
+
+status_tbl %>% 
+	summary_col_by_group(gender, permanent, col = total_income) %>%
+	ungroup() %>% 
+	select(gender, permanent, Median) %>% 
+	pivot_wider(
+		names_from = gender,
+		values_from = Median
+	) %>%  
+	janitor::clean_names() %>% 
+	arrange(desc(hombre)) %>% 
+	#left_join(count_tbl, by = 'position') %>% 
+	left_join(years_tbl, by = 'permanent') %>% 
+	kableExtra::kbl(caption = "Mediana de salario por ocupación, en dólares") %>%
+  kableExtra::kable_classic(full_width = F, html_font = "Cambria") %>% 
+	kableExtra::footnote(general = "Elaboració propia, Erick Gordón")
+
+```
+
+
+
+
+**Cantidad** de funcionarios por entidad según su sexo:
+
+```{r, echo=FALSE}
+parity_entity_count_tbl %>% 
+	mutate(code = NULL) %>% 
+	arrange(desc(diference)) %>% 
+	kbl(caption = "Cantidad de funcionarios por entidad y sexo") %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>% 
+	#add_header_above(c(" " = 1, "Cantidad" = 5, "Salario" = 6)) %>% 
+	footnote(general = "Elaboració propia, Erick Gordón")
+```
+
+**Mediana de salario** por entidad según su sexo:
+
+```{r, echo=FALSE}
+parity_entity_salary_tbl %>% 
+	mutate(code = NULL, salary_no_identificado = NULL) %>% 
+	arrange(desc(salary_diference)) %>% 
+	kbl(caption = "Mediana de salario por entidad y sexo") %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>% 
+	footnote(general = "Elaboración propia, Erick Gordón")
+```
+
+

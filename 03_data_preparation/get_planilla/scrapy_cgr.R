@@ -10,6 +10,9 @@ library(fs)        # Working with File System
 library(janitor)   # data wrangling 
 library(xopen)     # Quickly opening URLs
 library(XML)
+library(splashr)   # HTML javascript functions
+library(magick)    # Simplify high-quality image processing in R
+
 # google big query
 library(bigrquery)
 # *******************************************************************************
@@ -275,7 +278,7 @@ update # record_date
 # PROCESSED IN PARALLEL with furrr  ----
 #get_employees('007', '1')
 
-time_1 <- system.time()
+time_1 <- Sys.time()
 #plan("multiprocess")
 codes <- c('007', '018', '012', '000', '045')
 codes <- c('000')
@@ -285,7 +288,7 @@ employee_salaries_tbl <- entities_tbl %>%
 
 final_tbl <- employee_salaries_tbl %>% 
   unnest()
-system.time() - time_1 
+Sys.time() - time_1  #  9.777737 mins
 
 # end scrapy 
 final_tbl$departament = "unknow"
@@ -437,19 +440,28 @@ View(master_tbl[1:20,])
 nrow(master_tbl) # 157426
 paste0(PATH_PROCESS_OUT,  actual_month, "/",  "central_gov_salaries_", actual_month,".csv")
 
+master_tbl %>% 
+	glimpse()
+
 write.csv(master_tbl, 
 					paste0(PATH_PROCESS_OUT,  actual_month, "/",  "central_gov_salaries_", actual_month,".csv")
 					, row.names = FALSE) 
 table(master_tbl$update_date)
 max(as.Date(master_tbl$start_date, tryFormats = c("%d/%m/%Y")), na.rm = TRUE)
 
-master_tbl %>% 
-	glimpse()
+master_tbl %>%
+	group_by(entity) %>% 
+	summarise(
+		total = sum(salary + expenses),
+		n = n()
+	) %>% 
+	arrange(desc(total))
 
 
 # 2020-03-01 
 #     149466 
-
+# 2020-11-01 
+#     161571 
 # ********************************************************************
 # END 
 # ********************************************************************

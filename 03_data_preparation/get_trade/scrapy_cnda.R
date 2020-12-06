@@ -15,8 +15,8 @@ library(stringr)
 library(DataExplorer)
 
 # ***********************************************
-date_start <- "2020-08-01"
-date_end <- "2020-08-31"
+date_start <- "2020-10-01"
+date_end <- "2020-10-31"
 year <- substr(date_end, 1, 4)
 record_type <- "E" # I = Imports, E = exports 
 file_type <- ifelse(record_type == "I", "imports", "exports")

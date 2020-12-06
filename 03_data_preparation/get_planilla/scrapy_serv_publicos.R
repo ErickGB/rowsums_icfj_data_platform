@@ -314,9 +314,20 @@ master_tbl %>%
 	glimpse()
 
 
+output_file_name <- "servicio_publico"
 ouput_path <- paste0(PATH_OUT, update_year, "/",  update_month, "/", output_file_name, paste0(update_month, "_",update_year)  ,"_processed_", execution_date,".csv")
 ouput_path
-write.csv(master_tbl, ouput_path, row.names = FALSE) 
+
+# dates 
+page_date       # page -> last update
+update_date     # page -> last update in date format
+
+data_date       # What month of payment correspond .. last_date - 1 month
+execution_date  # when I run the data extraction
+
+# page_date  debe ser igual al mes actual
+
+write.csv(master_tbl, ouput_path, row.names = FALSE, na = "") 
 # total time
 
 

@@ -24,8 +24,8 @@ get_css_position_name <- function(name) {
 	return(new_name)
 }
 
-PATH_OUT <- "./00_data/out/salaries/pending_process/2020/july/"
-date_time <- as.character(as.Date('06/08/2020', tryFormats=c('%d/%m/%Y'))) # process execution day Sys.Date()
+PATH_OUT <- "./00_data/out/salaries/pending_process/2020/august/"
+date_time <- as.character(as.Date('04/10/2020', tryFormats=c('%d/%m/%Y'))) # process execution day Sys.Date()
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
 process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
@@ -98,7 +98,9 @@ for(i in 1:length(list_files))
 master_tbl %>% 
 	glimpse()
 
-table(master_tbl$record_date, master_tbl$file_name)
+table(master_tbl$record_date)
+
+table(master_tbl$file_name, master_tbl$record_date)
 table(master_tbl$record_date, master_tbl$update_date)
 
 
@@ -229,8 +231,8 @@ table(master_tbl$record_date, master_tbl$update_date)
 master_tbl <- master_tbl %>% 
 	#filter(is.null(start_date) == FALSE) %>% 
 	mutate(
-		update_date = as.Date('2020-08-03', tryFormat = '%Y-%m-%d'), # cuando lo actualice
-		record_date = as.Date('2020-07-30', tryFormat = '%Y-%m-%d'),  # de cuando es el dato
+		update_date = as.Date('2020-09-22', tryFormat = '%Y-%m-%d'), # cuando lo actualice
+		record_date = as.Date('2020-08-30', tryFormat = '%Y-%m-%d'),  # de cuando es el dato
 		status = toupper(str_trim(status, side = "both")),
 		status = ifelse(substr(status, 1, 18) == "PERMANENTE INI LAB", "PERMANENTE INI LAB", status),
 		status = ifelse(substr(status, 1, 19) == "TRANSITORIO INI LAB", "TRANSITORIO INI LAB", status),
@@ -252,6 +254,16 @@ nrow(master_tbl)
 master_tbl %>% 
 	DataExplorer::plot_missing()
 
+
+
+# temporally out MEDUCA
+#master_tbl <- master_tbl %>% 
+#	filter(code != "007")
+
+master_tbl <- master_tbl %>% 
+	mutate(
+		code = ifelse(code == '903', '049', code)
+	)
 entities_temp <- master_tbl %>% 
 	mutate(month = lubridate::month(update_date)) %>% 
 	group_by(month, code, entity) %>% 
@@ -261,11 +273,6 @@ entities_temp <- master_tbl %>%
 nrow(master_tbl)
 View(entities_temp)
 
-# temporally out MEDUCA
-#master_tbl <- master_tbl %>% 
-#	filter(code != "007")
-
- 
 # ********************************************************************
 # googledrive authentication
 httr::set_config(httr::config(http_version = 0))
@@ -304,9 +311,10 @@ min(cgs_tbl$employee_salary_id) - count_result # 1 it's ok
 
 
 # cgs_tbl[137, c("start_date") ] 
-cgs_tbl[137, c("start_date") ] <- as.Date("2010-06-18", tryFormats = c('%Y-%m-%d'))
+#cgs_tbl[137, c("start_date") ] <- as.Date("2010-06-18", tryFormats = c('%Y-%m-%d'))
 
 # 1: backup: staging_central_gov_salaries
+table(cgs_tbl$record_date)
 tryCatch(
 	{
 		job <- insert_upload_job("rowsums", "data_test", table = "staging_central_gov_salaries", 
@@ -324,6 +332,7 @@ job <- insert_upload_job("rowsums", "journalists", table = "central_gov_salaries
 												 values = cgs_tbl, write_disposition = "WRITE_TRUNCATE")
 wait_for(job)
 
+nrow(cgs_tbl)
 
 # ***************************************************
 # For NEW entities 
@@ -355,6 +364,8 @@ table(entity_jbos$entity)
 entity_jbos$position[1]
 entity_jbos$position[2]
 View(entity_jbos)
+write.csv(entity_jbos, "./00_data/new_jobs_2020.csv", row.names = FALSE)
+
 
 add_jobs <- as_tibble(query_results) %>% 
 	rename(job_title = position) %>% 
@@ -367,7 +378,7 @@ write.csv(entity_jbos,
 					paste0(PATH_OUT, "entity_new_jobs_", process_month,".csv"), row.names = FALSE)
 
 
-add_jobs <- readr::read_csv2(paste0("./00_data/out/salaries/", "new_jobs_", process_month,".csv"))
+#add_jobs <- readr::read_csv2(paste0("./00_data/out/salaries/", "new_jobs_", process_month,".csv"))
 
 
 # Ajusta los cargos que hacen falta... 
@@ -392,7 +403,7 @@ count_result$max + 1
 add_jobs$jobs_id <- add_jobs$jobs_id +  count_result$max
 
 # add jobs manually
-jobs_tbl <- readr::read_csv2(paste0("./00_data/out/salaries/", "last_jobs_20200822.csv"))
+jobs_tbl <- readr::read_csv2(paste0("./00_data/out/salaries/", "last_jobs_20200903.csv"))
 jobs_tbl$jobs_id <- as.integer(jobs_tbl$jobs_id)
 jobs_tbl$cluster <- as.integer(jobs_tbl$cluster)
 nrow(jobs_tbl)
@@ -413,6 +424,14 @@ job <- insert_upload_job("rowsums", "journalists", table = "d_jobs",
 												 values = jobs_tbl, write_disposition = "WRITE_TRUNCATE")
 wait_for(job)
 
+# validate
+sql <- "SELECT entity, upper(position) position, count(*) as total, avg(salary) salary 
+FROM journalists.central_gov_salaries where (position) not in (
+  SELECT (job_title) FROM journalists.d_jobs
+) GROUP BY entity, position"
+query_results <- query_exec(sql, project = project, useLegacySql = FALSE)
+as_tibble(query_results) %>% 
+	arrange(desc(salary))
 
 
 # *****************
@@ -480,11 +499,12 @@ dates_records %>%
 	glimpse()
 dates_records
 
-new_record <- dates_records[1, ]
+new_record <- dates_records[15, ]
 new_record$record_id <- (max(dates_records$record_id) + 1)
-new_record$record_date <- master_tbl$update_date[1]  #as.Date(last_update)
+new_record$record_date <- master_tbl$update_date[10000]  #as.Date(last_update)
 new_record$processed_date <-  master_tbl$record_date[1] #as.Date(last_update) - as.difftime(1, unit = "days")
 new_record$is_actual <- 1
+new_record
 
 dates_records$is_actual <- 0
 dates_records <- rbind(dates_records, new_record) # igualar con usuarios record_date
@@ -497,6 +517,16 @@ wait_for(job)
 
 # *****************
 # F_EMPLOYEE_SALARY: finally...
+#select count(*), c.record_date, record_id
+#FROM data_test.staging_central_gov_salaries c 
+#INNER JOIN journalists.d_people p ON p.person_id = c.person_id 
+#INNER JOIN journalists.d_entity e ON e.entity_code = c.code 
+#INNER JOIN journalists.d_jobs j ON j.job_title = c.position 
+#INNER JOIN journalists.d_date_upload d ON d.processed_date = c.record_date
+#group by c.record_date, record_id;
+
+
+nrow(master_tbl)
 sql <- "INSERT INTO journalists.f_employee_salary
 SELECT c.employee_salary_id,
 p.people_id, c.person_id, e.entity_id, e.entity_name, 
@@ -511,6 +541,9 @@ INNER JOIN journalists.d_entity e ON e.entity_code = c.code
 INNER JOIN journalists.d_jobs j ON j.job_title = c.position 
 INNER JOIN journalists.d_date_upload d ON d.processed_date = c.record_date;"
 employee_records <- query_exec(sql, project = project, useLegacySql = FALSE)
+
+
+158010 - 157133
 
 #GENERATE_UUID()
 #(SHA256(Bizkey)) SurrogateKey

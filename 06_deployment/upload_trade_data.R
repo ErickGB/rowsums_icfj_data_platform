@@ -162,7 +162,8 @@ last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
 data_tbl$process_date <- as.Date(last_update, tryFormats = c('%Y-%m-%d')) #Sys.Date()
 View(data_tbl)
-data_tbl <- data_tbl[52,]
+data_tbl[53,]
+data_tbl <- data_tbl[53,]
 
 httr::set_config(httr::config(http_version = 0))
 # autentication - only one time
@@ -258,7 +259,7 @@ month, year, year_month_date, year_date
 from trade.fact_import fi
 inner join trade.dim_category ca on  fi.category_id = ca.category_id
 inner join trade.dim_country co on  fi.country_id = co.country_id
-where -- record_id = 7 # IMPORTANT!!
+where -- record_id = 8 # IMPORTANT!!
 group by co. alpha_2 , co.name, region, sub_region, latitude, longitude, company, RUC, category_code, 
 sub_category_code, category, sub_category,month, year, year_month_date, year_date 
 30.821

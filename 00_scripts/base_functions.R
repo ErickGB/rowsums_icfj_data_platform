@@ -12,12 +12,31 @@ library(glue)
 library(vtreat)  # categorical w
 # ************************************************
 
+tableau_colours <- c("#67000d", "#555555",'#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#CFECF9', '#7F7F7F', '#BCBD22', '#17BECF')
+
+rs_style <- function(){
+	font <- "Helvetica"
+	tableau_colours <- c("#555555",'#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#CFECF9', '#7F7F7F', '#BCBD22', '#17BECF')
+	theme(
+		panel.grid.major.y = ggplot2::element_blank(),
+		plot.title = ggplot2::element_text(family = font, size = 16, face = "bold", color = "#222222"),
+		plot.subtitle = ggplot2::element_text(family = font, size = 12, margin = ggplot2::margin(5, 0, 5, 0)),
+		legend.text = ggplot2::element_text(family = font, size = 10),
+		plot.caption = ggplot2::element_text(), 
+		axis.text = ggplot2::element_text(family = font, size = 8, color = "#222222"), 
+		axis.text.y = ggplot2::element_text(family = font, size = 10, color = "#222222"),
+		axis.text.x = ggplot2::element_text(family = font, size = 10, color = "#222222"),
+		strip.text = ggplot2::element_text(size = 14, hjust = 0, face = "bold")
+		#axis.text.x = ggplot2::element_text(margin = ggplot2::margin(5, b = 10))
+	) 
+}
+
+
 # *********************************************************
 # anomaly detection with Isolation Forest ----
 # 1 indica anomalías
 # menor que 0.5 indica observaciones normales
 # Si todas las puntuaciones están cerca de 0,5 la muestra completa no parece tener anomalías claramente distintas
-
 get_outliers <- function(data_tbl){
 	localH2O = h2o.init()
 	raw_cloud <-as.h2o(data_tbl, destination_frame="train_hex")
@@ -122,7 +141,7 @@ summary_col_by_group <- function(data, ..., col, alpha = 0.05) {
 	
 	ret <- data %>% 
 		group_by(!!! grouping_vars) %>% 
-		summarize(Count=n(), Total=sum(!! col_var, na.rm = TRUE), 
+		summarise(Count=n(), Total=sum(!! col_var, na.rm = TRUE), 
 			      Min  = min(!! col_var, na.rm = TRUE), 
 			      Max  = max(!! col_var, na.rm = TRUE), 
 			      SD   = sd( !! col_var, na.rm = TRUE), 
@@ -130,7 +149,7 @@ summary_col_by_group <- function(data, ..., col, alpha = 0.05) {
             Mean = mean(!! col_var, na.rm = TRUE), 
 			      Median=median(!! col_var, na.rm = TRUE), 
 			      Skewed = skewness(!! col_var, na.rm = TRUE), 
-			      normality_test = ks.test(x=(!! col_var) ,y='pnorm')$p.value,
+			      #normality_test = ks.test(x=(!! col_var) ,y='pnorm')$p.value,
 			      Q3   = quantile(!! col_var, probs = c(0.75), na.rm = TRUE),
 			      IQR  = IQR(!! col_var, na.rm = TRUE),
 			      OUT_LI  = (1.5 * IQR) - Mean, #Mean - (3 * SD), 
@@ -142,9 +161,9 @@ summary_col_by_group <- function(data, ..., col, alpha = 0.05) {
             LS   = Mean + (t  * SE), 
 			      LI = Mean - (t  * SE)) %>% 
 		ungroup() %>% 
-		as.tibble() 
+		as_tibble() 
 
-	ret$Colname = rep(as.character(col_var)[2], times=nrow(ret))
+	ret$Colname = rep(as_label(col_var)[2], times=nrow(ret))
 	
 	return(ret) 
 }

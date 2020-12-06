@@ -21,6 +21,12 @@ output_file_name <- "defensoria_gov_salaries_"
 
 
 PATH_OUT <- "./00_data/out/salaries/pending_process/"
+PATH_PROCESS_OUT <- "./00_data/out/salaries/pending_process/2020/"
+
+date_time <- as.character(Sys.Date()) # process execution day
+last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
+process_date <- as.Date(last_update, tryFormats = c("%Y-%m-%d")) - as.difftime(1, unit = "days") # data of the month ...
+actual_month <- tolower(month.name[as.integer(paste0(substr(process_date, 6, 7)))])
 
 # ***********************************************
 # functions ----
@@ -127,6 +133,10 @@ get_mc_employee <- function(tableid, url) {
 # ***********************************************
 # scraping - Dates 
 # ***********************************************
+splash_active()
+
+install_splash()
+start_splash()
 
 body_html <- splash_local %>% 
 	splash_go(url) %>% 
@@ -314,7 +324,18 @@ master_tbl %>%
 
 ouput_path <- paste0(PATH_OUT, update_year, "/",  update_month, "/defensoria_gov_salaries_", paste0(update_month, "_",update_year)  ,"_processed_", execution_date,".csv")
 ouput_path
-write.csv(master_tbl, ouput_path, row.names = FALSE) 
+
+# dates 
+page_date       # page -> last update
+update_date     # page -> last update in date format
+
+data_date       # What month of payment correspond .. last_date - 1 month
+execution_date  # when I run the data extraction
+
+ouput_path <- paste0(PATH_PROCESS_OUT,  actual_month, "/",  "central_gov_salaries_defensoria_", actual_month,".csv")
+ouput_path
+
+write.csv(master_tbl, ouput_path, row.names = FALSE, na = "") 
 # total time
 
 

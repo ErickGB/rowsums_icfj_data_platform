@@ -11,6 +11,7 @@ library(furrr)     # Parallel Processing using purrr (iteration)
 # ***************************************************************************
 url <- "http://ogov.defensoria.gob.pa/transparencia/index.php?option=com_k2&view=item&layout=item&id=31"
 PATH_OUT <- "./00_data/out/salaries/"
+PATH_PROCESS_OUT <- "./00_data/out/salaries/pending_process/2020/"
 entity_name <- "Autoridad Marítima de Panamá"
 	
 # ***********************************************
@@ -246,6 +247,11 @@ master_tbl %>%
 
 
 # write data processing
-file_name <- paste0(PATH_OUT, "central_amp_gov_salaries_", update_date,".csv")
+file_name <- paste0(PATH_PROCESS_OUT,  update_month, "/",  "central_gov_salaries_amp_", update_month,"_proceseed_", execution_date,".csv")
 file_name
-write.csv(master_tbl, file_name, row.names = FALSE)
+
+write.csv(master_tbl 
+					, file_name
+					, row.names = FALSE
+					, na = "") 
+
