@@ -449,13 +449,46 @@ write.csv(master_tbl,
 table(master_tbl$update_date)
 max(as.Date(master_tbl$start_date, tryFormats = c("%d/%m/%Y")), na.rm = TRUE)
 
-master_tbl %>%
+summmary_dec_tbl <- master_tbl %>%
 	group_by(entity) %>% 
 	summarise(
-		total = sum(salary + expenses),
-		n = n()
+		salary_dec = sum(salary + expenses),
+		total_dec = n()
 	) %>% 
-	arrange(desc(total))
+	arrange(desc(total_dec))
+
+#jan_tbl <- read_csv("00_data/out/salaries/pending_process/2020/january/cgr_gov_salaries_ene.csv")
+march_tbl <- read_csv("00_data/out/salaries/pending_process/2020/march/1_central_gov_salaries_march.csv")
+
+summmary_jan_tbl <- jan_tbl %>%
+	group_by(entity) %>% 
+	summarise(
+		salary_jan  = sum(salary + expenses),
+		total_jan = n()
+	) %>% 
+	arrange(desc(total_jan))
+
+summmary_march_tbl <- march_tbl %>%
+	group_by(entity) %>% 
+	summarise(
+		salary_march  = sum(salary + expenses),
+		total_march = n()
+	) %>% 
+	arrange(desc(salary_march))
+
+summary_tbl <- summmary_jan_tbl %>% 
+	left_join(summmary_dec_tbl, by = 'entity') %>% 
+	left_join(summmary_march_tbl, by = 'entity') %>% 
+	mutate(
+		total_diff  = total_dec - total_jan,
+		salari_diff = salary_dec - salary_jan,
+		percent_dif = round((salari_diff / salary_jan)*100, 2) / 1000000
+	)
+View(summary_tbl)
+
+write.csv(summary_tbl, 
+					paste0(PATH_PROCESS_OUT,  actual_month, "/",  "final_2020",".csv")
+					, row.names = FALSE) 
 
 
 # 2020-03-01 
@@ -465,5 +498,7 @@ master_tbl %>%
 # ********************************************************************
 # END 
 # ********************************************************************
+
+
 
 

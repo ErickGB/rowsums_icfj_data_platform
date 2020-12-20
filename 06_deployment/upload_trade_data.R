@@ -162,8 +162,8 @@ last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
 data_tbl$process_date <- as.Date(last_update, tryFormats = c('%Y-%m-%d')) #Sys.Date()
 View(data_tbl)
-data_tbl[53,]
-data_tbl <- data_tbl[53,]
+data_tbl[54,]
+data_tbl <- data_tbl[54,]
 
 httr::set_config(httr::config(http_version = 0))
 # autentication - only one time
@@ -225,7 +225,8 @@ select GENERATE_UUID(), 'SB', 'SLB', 'ISO-3166', '677', 'Solomon Islands', 'Ocea
 
 select GENERATE_UUID(), 'LY', 'LYB', 'ISO-3166', '218', 'Libia', 'Africa', 'Northern Africa', '002', '015', 2.379440, 37.5088900, 1, NULL 
 
-
+INSERT INTO trade.dim_country
+select GENERATE_UUID(), 'SS', 'SSD', 'ISO-3166', '728', 'South Sudan', 'Africa', 'East Africa', '002', '??', 6.52340, 30.62477, 1, cast('2099-12-31' as date) 	
 	
 
 */
