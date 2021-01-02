@@ -1,0 +1,6 @@
+RS:
+server: rowsums-dbserver.database.windows.net
+type: sqlserver
+user: rs-app-account
+password: xgBo0st.0$_
+port: 1433
