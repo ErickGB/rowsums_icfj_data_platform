@@ -162,8 +162,9 @@ last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
 data_tbl$process_date <- as.Date(last_update, tryFormats = c('%Y-%m-%d')) #Sys.Date()
 View(data_tbl)
-data_tbl[54,]
-data_tbl <- data_tbl[54,]
+data_tbl[55,]
+data_tbl <- data_tbl[55,]
+nrow(data_tbl)
 
 httr::set_config(httr::config(http_version = 0))
 # autentication - only one time
@@ -196,7 +197,8 @@ system.time(
 
 data_tbl %>% 
 	head()
-sum(data_tbl$tbl) # 148,427
+sum(data_tbl$tbl) # 147,226; 137,332
+# data_tbl[c(85249, 85249), ]
 
 bq_deauth()
 
@@ -263,7 +265,7 @@ inner join trade.dim_country co on  fi.country_id = co.country_id
 where -- record_id = 8 # IMPORTANT!!
 group by co. alpha_2 , co.name, region, sub_region, latitude, longitude, company, RUC, category_code, 
 sub_category_code, category, sub_category,month, year, year_month_date, year_date 
-30.821
+
 
 
 
@@ -302,23 +304,4 @@ sub_category_code, category, sub_category,month, year, year_month_date, year_dat
 #total - nrow(data_tbl) 
 #table(data_tbl$origin, useNA = "always")
 
-PATH_OUT <- "./00_data/in/imports/"
-company_raw_tbl <- readr::read_csv(paste0(PATH_OUT, "companies_after.csv"))
-company_raw_tbl <- company_raw_tbl %>% 
-	janitor::clean_names()
 
-company_ref_tbl <- company_raw_tbl %>% 
-	mutate(
-		name_split = map_chr(key_value, .f = function(x) {str_split(x, pattern = "_")[[1]][1]}),
-		id_split = map_chr(key_value, .f = function(x) {str_split(x, pattern = "_")[[1]][2]})
-	) 
-
-company_ref_tbl %>% 
-	filter(str_detect(company_mod, "INDICAS"))
-
-# 104719 - 72887 = 34872.. ALFREDO IBANEZ_E-8-111948
-company_ref_tbl %>% 
-	count(name_split, id_split)
-
-
-write.csv(total_edited_tbl, "./00_data/out/companies_before.csv", row.names = FALSE)

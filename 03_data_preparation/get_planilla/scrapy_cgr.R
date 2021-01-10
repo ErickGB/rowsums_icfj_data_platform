@@ -449,6 +449,11 @@ write.csv(master_tbl,
 table(master_tbl$update_date)
 max(as.Date(master_tbl$start_date, tryFormats = c("%d/%m/%Y")), na.rm = TRUE)
 
+
+
+# ********************************************************************
+
+
 summmary_dec_tbl <- master_tbl %>%
 	group_by(entity) %>% 
 	summarise(

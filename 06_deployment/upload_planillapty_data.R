@@ -24,8 +24,8 @@ get_css_position_name <- function(name) {
 	return(new_name)
 }
 
-PATH_OUT <- "./00_data/out/salaries/pending_process/2020/august/"
-date_time <- as.character(as.Date('04/10/2020', tryFormats=c('%d/%m/%Y'))) # process execution day Sys.Date()
+PATH_OUT <- "./00_data/out/salaries/pending_process/2020/december/"
+date_time <- as.character(as.Date('10/01/2021', tryFormats=c('%d/%m/%Y'))) # process execution day Sys.Date()
 last_update <- paste0(substr(date_time, 1, 8), "01") # execution month
 
 process_date <- as.Date(last_update) - as.difftime(1, unit = "days") # data of the month ...
@@ -231,8 +231,8 @@ table(master_tbl$record_date, master_tbl$update_date)
 master_tbl <- master_tbl %>% 
 	#filter(is.null(start_date) == FALSE) %>% 
 	mutate(
-		update_date = as.Date('2020-09-22', tryFormat = '%Y-%m-%d'), # cuando lo actualice
-		record_date = as.Date('2020-08-30', tryFormat = '%Y-%m-%d'),  # de cuando es el dato
+		update_date = as.Date('2021-01-10', tryFormat = '%Y-%m-%d'), # cuando lo actualice
+		record_date = as.Date('2020-12-31', tryFormat = '%Y-%m-%d'),  # de cuando es el dato
 		status = toupper(str_trim(status, side = "both")),
 		status = ifelse(substr(status, 1, 18) == "PERMANENTE INI LAB", "PERMANENTE INI LAB", status),
 		status = ifelse(substr(status, 1, 19) == "TRANSITORIO INI LAB", "TRANSITORIO INI LAB", status),
@@ -247,7 +247,7 @@ master_tbl <- master_tbl %>%
 #cgr_tbl <- readr::read_csv(paste0(PATH_OUT, "central_gov_salaries_", process_month, ".csv"))
 #mic_tbl <- readr::read_csv(paste0(PATH_OUT, "mic_gov_salaries_", process_month, ".csv"))
 #meduca_tbl <- readr::read_csv(paste0(PATH_OUT, "meduca_gov_salaries_", process_month, ".csv"))
-# 184184 - 195224.. 180720, feb = 186625
+# 184184 - 195224.. 180720, feb = 186625; oct 2020 = 161571
 nrow(master_tbl)
 
 
@@ -272,6 +272,11 @@ entities_temp <- master_tbl %>%
 
 nrow(master_tbl)
 View(entities_temp)
+
+master_tbl %>% 
+	filter(is.na(start_date)) %>% 
+	select(complete_name, last_name, person_id, position, salary, total_income, start_date)
+
 
 # ********************************************************************
 # googledrive authentication
@@ -310,8 +315,8 @@ cgs_tbl <- cgs_tbl %>%
 min(cgs_tbl$employee_salary_id) - count_result # 1 it's ok
 
 
-# cgs_tbl[137, c("start_date") ] 
-#cgs_tbl[137, c("start_date") ] <- as.Date("2010-06-18", tryFormats = c('%Y-%m-%d'))
+# cgs_tbl[139, c("start_date") ] 
+# cgs_tbl[139, c("start_date") ] <- as.Date("2010-06-18", tryFormats = c('%Y-%m-%d'))
 
 # 1: backup: staging_central_gov_salaries
 table(cgs_tbl$record_date)
@@ -369,12 +374,12 @@ write.csv(entity_jbos, "./00_data/new_jobs_2020.csv", row.names = FALSE)
 
 add_jobs <- as_tibble(query_results) %>% 
 	rename(job_title = position) %>% 
-	mutate(PEP = NA, PEP2 = NA, date_record = '03/18/2020', 
+	mutate(PEP = NA, PEP2 = NA, date_record = '12/12/2020', 
 				 job_position = NA,
 				 cluster = NA, jobs_id = rownames(.)) %>% 
 	dplyr::select(jobs_id, job_position, job_title, PEP, PEP2, date_record, cluster)
 
-write.csv(entity_jbos, 
+write.csv(add_jobs, 
 					paste0(PATH_OUT, "entity_new_jobs_", process_month,".csv"), row.names = FALSE)
 
 
@@ -451,7 +456,7 @@ people_tbl <- bind_rows(purrr::map_df(new_people_tbl$person_id, .f = function(x)
 people_tbl
 table(people_tbl$sex, useNA = "always")
 
-#why??
+# there are people was working in the gov before
 table(lubridate::year(people_tbl$start_date))
 people_tbl %>% 
 	mutate(year = lubridate::year(people_tbl$start_date)) %>% 
@@ -479,7 +484,7 @@ people_tbl %>%
 	count(person_id) %>% 
 	filter(n > 1)
 
-people_tbl[727, c("start_date")] <- as.Date("2010-06-18")
+#people_tbl[727, c("start_date")] <- as.Date("2010-06-18")
 
 # add data to final tables 
 job <- insert_upload_job("rowsums", "journalists", table = "d_people", 
@@ -710,9 +715,4 @@ analytics_url("https://goo.gl/2FcFVQbk")
 	# empleados nuevos * 
 
 # presentar tabla de empleados pep
-
-
-
-
-
 
