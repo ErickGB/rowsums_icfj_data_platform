@@ -1,5 +1,5 @@
 cat("\014")
-gc() # garbage collector
+gc() # garbage collector xgB00$t1
 # ********************************************************************
 # google bigquery connection ----
 library(bigrquery)
